@@ -49,7 +49,7 @@
   <properties>
     <source.level>1.8</source.level>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <scala.version>2.11.7</scala.version>
+    <scala.version>2.12.0-M3</scala.version>
     <scala.maven.version>3.2.2</scala.maven.version>
   </properties>
 
@@ -58,6 +58,26 @@
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.threerings</groupId>
+      <artifactId>react</artifactId>
+      <version>1.6-SNAPSHOT</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>18.0</version>
+    </dependency>
+
+    <!-- this is just needed at compile time -->
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>1.3.9</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -83,6 +103,13 @@
             </goals>
           </execution>
         </executions>
+        <configuration>
+          <args>
+            <arg>-deprecation</arg>
+              <arg>-Yopt:l:classpath</arg>
+              <arg>-Xexperimental</arg>
+          </args>
+        </configuration>
       </plugin>
 
       <plugin>

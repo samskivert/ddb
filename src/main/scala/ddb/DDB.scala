@@ -17,36 +17,57 @@ class DDB {
   /** A signal emitted when an entity is destroyed. */
   val entityDestroyed :Signal[DEntity] = Signal.create()
 
-  def keys[E <: DEntity] (ecomp :DCompanion[E]) :Iterable[Long] = etable(ecomp).entities.keySet
+  def keys[E <: DEntity] (ecomp :DCompanion[E]) :Iterable[Long] =
+    _etable(ecomp).entities.keySet
 
-  def get[E <: DEntity] (ecomp :DCompanion[E])(id :Long) :E = etable(ecomp).entities.get(id) match {
-    case null => throw new IllegalArgumentException(s"No $ecomp entity with id: $id")
-    case ent  => ent.asInstanceOf[E]
-  }
+  def entities[E <: DEntity] (ecomp :DCompanion[E]) :Iterable[E] =
+    _etable(ecomp).entities.values.asInstanceOf[Iterable[E]]
 
-  def singleton[E <: DEntity] (ecomp :DCompanion[E]) :E = _singles.get(ecomp).asInstanceOf[E]
+  def singleton[E <: DEntity] (ecomp :DCompanion[E]) :E =
+    _singles.get(ecomp).asInstanceOf[E]
 
+  def get[E <: DEntity] (ecomp :DCompanion[E])(id :Long) :E =
+    _etable(ecomp).entities.get(id) match {
+      case null => throw new IllegalArgumentException(s"No $ecomp entity with id: $id")
+      case ent  => ent.asInstanceOf[E]
+    }
+
+  /** Creates a new entity via `ecomp` assigning it a new unique id. */
   def create[E <: DEntity] (ecomp :DCompanion[E]) :E = {
-    val table = etable(ecomp)
+    val table = _etable(ecomp)
     val id = table.nextId
     table.nextId += 1
-    val entity = ecomp.create(id)
-    table.entities.put(id, entity)
-    entityCreated.emit(entity)
-    entity
+    table.create(ecomp, id)
+  }
+
+  /** Destroys the entity `id` and creates a new entity via `ecomp` with the same id. */
+  def recreate[E <: DEntity] (id :Long, ecomp :DCompanion[E]) :E = {
+    val table = _etable(ecomp)
+    table.remove(id)
+    table.create(ecomp, id)
   }
 
   def destroy (entity :DEntity) :Unit = {
-    val table = etable(entity.companion)
-    val removed = table.entities.remove(entity.id)
-    if (removed != null) entityDestroyed.emit(entity)
+    _etable(entity.companion).remove(entity.id)
   }
 
-  private def etable[E <: DEntity] (ecomp :DCompanion[E]) = _entities.get(ecomp.entityName)
+  private def _etable[E <: DEntity] (ecomp :DCompanion[E]) = _entities.get(ecomp.entityName)
 
   private class ETable {
     var nextId = 1L
     val entities = new HashMap[Long,DEntity]()
+
+    def create[E <: DEntity] (ecomp :DCompanion[E], id :Long) :E = {
+      val entity = ecomp.create(id)
+      entities.put(id, entity)
+      entityCreated.emit(entity)
+      entity
+    }
+
+    def remove (id :Long) {
+      val removed = entities.remove(id)
+      if (removed != null) entityDestroyed.emit(removed)
+    }
   }
 
   private val _entities = cacheMap[String,ETable](comp => new ETable)

@@ -10,11 +10,11 @@ package ddb
 abstract class DEntity (val id :Long) {
 
   /** Returns a reference to this entity's companion singleton. */
-  def companion :DCompanion[_ <: DEntity]
+  abstract fun companion () :DCompanion<DEntity>
 
   /** Defines a reactive component of this entity. */
-  def dvalue[T] (schemaVers :Int, initVal :T) :DValue[T] = {
+  fun <T> dvalue (schemaVers :Int, initVal :T) :DValue<T> {
     // TODO: registering with schema (using version), etc.
-    new DValue(initVal)
+    return DValue(initVal)
   }
 }

@@ -47,19 +47,11 @@
   </prerequisites>
 
   <properties>
-    <source.level>1.8</source.level>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <scala.version>2.12.0-M3</scala.version>
-    <scala.maven.version>3.2.2</scala.maven.version>
+    <kotlin.version>1.0.0-beta-1038</kotlin.version>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-library</artifactId>
-      <version>${scala.version}</version>
-    </dependency>
-
     <dependency>
       <groupId>com.threerings</groupId>
       <artifactId>react</artifactId>
@@ -86,68 +78,34 @@
       <version>4.8.1</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+      <version>${kotlin.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
+    <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
+    <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
+
     <plugins>
       <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>${scala.maven.version}</version>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <version>${kotlin.version}</version>
         <executions>
           <execution>
-            <goals>
-              <goal>compile</goal>
-              <goal>testCompile</goal>
-              <goal>doc-jar</goal>
-            </goals>
+            <id>compile</id>
+            <phase>compile</phase>
+            <goals><goal>compile</goal></goals>
+          </execution>
+          <execution>
+            <id>test-compile</id>
+            <phase>test-compile</phase>
+            <goals><goal>test-compile</goal></goals>
           </execution>
         </executions>
-        <configuration>
-          <args>
-            <arg>-deprecation</arg>
-              <arg>-Yopt:l:classpath</arg>
-              <arg>-Xexperimental</arg>
-          </args>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.3</version>
-        <configuration>
-          <source>${source.level}</source>
-          <target>${source.level}</target>
-          <fork>true</fork>
-          <showDeprecation>true</showDeprecation>
-          <showWarnings>true</showWarnings>
-          <compilerArgs>
-            <arg>-Xlint</arg>
-            <arg>-Xlint:-serial</arg>
-            <arg>-Xlint:-path</arg>
-          </compilerArgs>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>2.7</version>
-        <configuration>
-          <encoding>UTF-8</encoding>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.10.3</version>
-        <configuration>
-          <quiet>true</quiet>
-          <show>public</show>
-          <additionalparam>-Xdoclint:all -Xdoclint:-missing</additionalparam>
-        </configuration>
       </plugin>
 
       <plugin>

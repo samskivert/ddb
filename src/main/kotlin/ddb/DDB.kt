@@ -6,26 +6,24 @@ package ddb
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.google.common.cache.LoadingCache
-import react.Signal
 import java.util.*
 
-class DDB {
+open class DDB {
 
   /** A signal emitted when an entity is created. */
-  val entityCreated :Signal<DEntity> = Signal.create()
+  val entityCreated = DSignal<DEntity>()
 
   /** A signal emitted when an entity is destroyed. */
-  val entityDestroyed :Signal<DEntity> = Signal.create()
+  val entityDestroyed = DSignal<DEntity>()
 
-  fun <E : DEntity> keys (ecomp :DCompanion<E>) :Iterable<Long> =
-    _etable(ecomp).entities.keys
+  /** Returns the keys for all entities of type [E]. */
+  fun <E : DEntity> keys (ecomp :DCompanion<E>) :Iterable<Long> = _etable(ecomp).entities.keys
 
-  fun <E : DEntity> entities (ecomp :DCompanion<E>) :Iterable<E> =
-    _etable(ecomp).entities.values
+  /** Returns all entities of type [E]. */
+  fun <E : DEntity> entities (ecomp :DCompanion<E>) :Iterable<E> = _etable(ecomp).entities.values
 
   @Suppress("UNCHECKED_CAST")
-  fun <E : DEntity> singleton (ecomp :DCompanion<E>) :E =
-    _singles.get(ecomp) as E
+  fun <E : DEntity> singleton (ecomp :DCompanion<E>) :E = _singles.get(ecomp) as E
 
   fun <E : DEntity> get (ecomp :DCompanion<E>, id :Long) :E {
     val ent = _etable(ecomp).entities[id]

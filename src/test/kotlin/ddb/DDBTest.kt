@@ -8,7 +8,8 @@ import org.junit.Assert.*
 
 class DDBTest {
     class TestEntity (id :Long) : DEntity(id) {
-        val name = dvalue(1, "")
+        var name :String by dvalue(1, "")
+        var age :Int by dvalue(1, 0)
 
         override fun companion () = Companion
 
@@ -20,9 +21,16 @@ class DDBTest {
 
     @Test fun testCRUD () {
         val ddb = DDB()
-
         val ent = ddb.create(TestEntity.Companion)
-        ent.name.update("pants")
-        assertEquals("pants", ent.name())
+        ent.onEmit(TestEntity::age) { age ->
+            println("Age changed $age")
+        }
+        ent.onChange(TestEntity::age) { nage, oage ->
+            println("Age changed $oage -> $nage")
+        }
+        ent.name = "pants"
+        assertEquals("pants", ent.name)
+        ent.age = 15
+        assertEquals(15, ent.age)
     }
 }

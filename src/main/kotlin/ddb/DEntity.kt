@@ -14,8 +14,8 @@ abstract class DEntity (val id :Long) : DReactor() {
   fun <T> onEmit (prop :KProperty<T>, fn :(T) -> Unit) :DConnection {
     return addCons(object : Cons(this) {
       @Suppress("UNCHECKED_CAST")
-      override fun notify (a1: Any, a2: Any, a3: Any) {
-        if ((a1 as KProperty<*>).name == prop.name) fn(a2 as T)
+      override fun notify (p :KProperty<*>, a1: Any, a2: Any) {
+        if (areEqual(p, prop)) fn(a1 as T)
       }
     })
   }
@@ -23,8 +23,8 @@ abstract class DEntity (val id :Long) : DReactor() {
   fun <T> onChange (prop :KProperty<T>, fn :(T, T) -> Unit) :DConnection =
     addCons(object : Cons(this) {
       @Suppress("UNCHECKED_CAST")
-      override fun notify (a1 :Any, a2 :Any, a3 :Any) {
-        if ((a1 as KProperty<*>).name == prop.name) fn(a2 as T, a3 as T)
+      override fun notify (p :KProperty<*>, a1 :Any, a2 :Any) {
+        if (areEqual(p, prop)) fn(a1 as T, a2 as T)
       }
     })
 
@@ -52,4 +52,7 @@ abstract class DEntity (val id :Long) : DReactor() {
       println("Emitting change $prop $oldval -> $newval")
     notify(prop, newval as Any, oldval as Any)
   }
+
+  private fun areEqual (prop0 :KProperty<*>, prop1 :KProperty<*>) :Boolean =
+    prop0.name == prop1.name // TODO
 }

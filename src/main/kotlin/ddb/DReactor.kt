@@ -3,6 +3,8 @@
 
 package ddb
 
+import kotlin.reflect.KProperty
+
 abstract class DReactor {
 
     /** Returns true if this reactor has at least one connection. */
@@ -63,13 +65,13 @@ abstract class DReactor {
      * here and force the caller to just cast things, because this is all under the hood where
      * there's zero chance of fucking up and this results in simpler, easier to read code.
      */
-    protected fun notify (a1 :Any, a2 :Any, a3 :Any) {
+    protected fun notify (p :KProperty<*>, a1 :Any, a2 :Any) {
         var lners :Cons? = null
         synchronized (this) {
             // if we're currently dispatching, defer this notification until we're done
             if (_listeners == DISPATCHING) {
                 _pendingRuns = append(_pendingRuns, object : Runs() {
-                    override fun run () { notify(a1, a2, a3) }
+                    override fun run () { notify(p, a1, a2) }
                 })
             } else {
                 lners = _listeners
@@ -83,8 +85,7 @@ abstract class DReactor {
             // perform this dispatch, catching and accumulating any errors
             var cons = lners ; while (cons != null) {
                 try {
-                    println("notify($cons $a1 $a2 $a3)")
-                    cons.notify(a1, a2, a3)
+                    cons.notify(p, a1, a2)
                 } catch (ex :RuntimeException) {
                     // kotlin seems to refuse to find addSuppressed
                     /*if (exn != null) exn.addSuppressed(ex)
@@ -148,7 +149,7 @@ abstract class DReactor {
         }
 
         val DISPATCHING = object : Cons(null) {
-            override fun notify (a1 :Any, a2: Any, a3 :Any) {}
+            override fun notify (p :KProperty<*>, a1 :Any, a2: Any) {}
         }
     }
 }

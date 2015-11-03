@@ -17,10 +17,10 @@ open class DDB {
   val entityDestroyed = DSignal<DEntity>()
 
   /** Returns the keys for all entities of type [E]. */
-  fun <E : DEntity> keys (ecomp :DCompanion<E>) :Iterable<Long> = _etable(ecomp).entities.keys
+  fun <E : DEntity> keys (ecomp :DCompanion<E>) :Collection<Long> = _etable(ecomp).entities.keys
 
   /** Returns all entities of type [E]. */
-  fun <E : DEntity> entities (ecomp :DCompanion<E>) :Iterable<E> = _etable(ecomp).entities.values
+  fun <E : DEntity> entities (ecomp :DCompanion<E>) :Collection<E> = _etable(ecomp).entities.values
 
   @Suppress("UNCHECKED_CAST")
   fun <E : DEntity> singleton (ecomp :DCompanion<E>) :E = _singles.get(ecomp) as E
@@ -46,11 +46,11 @@ open class DDB {
   }
 
   fun destroy (entity :DEntity) {
-    _etable(entity.companion()).remove(entity.id)
+    _etable(entity.companion).remove(entity.id)
   }
 
   private fun <E : DEntity> _etable (ecomp :DCompanion<E>) =
-      _entities.get(ecomp.entityName()) as ETable<E>
+      _entities.get(ecomp.entityName) as ETable<E>
 
   private inner class ETable<E : DEntity> {
     var nextId = 1L

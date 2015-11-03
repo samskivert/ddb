@@ -11,12 +11,12 @@ class DDBTest {
         var name :String by dvalue(1, "")
         var age :Int by dvalue(1, 0)
 
-        override fun companion () = Companion
+        override val companion = Companion
 
         companion object :DCompanion<TestEntity> {
             val NAME = TestEntity::name
             val AGE  = TestEntity::age
-            override fun entityName () = "test"
+            override val entityName = "test"
             override fun create (id :Long) = TestEntity(id)
         }
     }

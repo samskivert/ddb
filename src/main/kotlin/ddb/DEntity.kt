@@ -29,7 +29,7 @@ abstract class DEntity (val id :Long) : DReactor() {
     })
 
   /** Returns a reference to this entity's companion singleton. */
-  abstract fun companion () :DCompanion<DEntity>
+  abstract val companion :DCompanion<DEntity>
 
   inner class DValue<T> (initVal :T) {
     private var _curval = initVal
@@ -49,7 +49,6 @@ abstract class DEntity (val id :Long) : DReactor() {
 
   /** Reports to listeners when a property has changed. */
   private fun <T> emitChange (prop :KProperty<*>, oldval :T, newval :T) {
-      println("Emitting change $prop $oldval -> $newval")
     notify(prop, newval as Any, oldval as Any)
   }
 

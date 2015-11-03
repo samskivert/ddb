@@ -5,7 +5,7 @@ package ddb
 
 interface DCompanion<out E : DEntity> {
 
-  fun entityName () :String
+  val entityName :String
 
   fun create (id :Long) :E
 }

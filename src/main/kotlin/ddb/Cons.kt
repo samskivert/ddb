@@ -3,12 +3,13 @@
 
 package ddb
 
+import react.Connection
 import kotlin.reflect.KProperty
 
 /**
  * Implements {@link Connection} and a linked-list style listener list for {@link Reactor}s.
  */
-abstract class Cons (owner :DReactor?): DConnection()  {
+abstract class Cons (owner :DReactor?): Connection()  {
 
     private var _owner :DReactor? = owner
     private var _oneShot = false
@@ -29,12 +30,14 @@ abstract class Cons (owner :DReactor?): DConnection()  {
         _owner = null
     }
 
-    override fun once () :DConnection {
+    override fun once () :Connection {
         _oneShot = true
         return this
     }
 
-    override fun atPrio (priority :Int) :DConnection {
+    override fun holdWeakly () :Connection = throw UnsupportedOperationException()
+
+    override fun atPrio (priority :Int) :Connection {
         val owner = _owner ?: throw IllegalStateException(
             "Cannot change priority of disconnected connection.")
         owner.disconnect(this)

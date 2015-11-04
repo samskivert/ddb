@@ -7,14 +7,15 @@ import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.google.common.cache.LoadingCache
 import java.util.*
+import react.Signal
 
 open class DDB {
 
   /** A signal emitted when an entity is created. */
-  val entityCreated = DSignal<DEntity>()
+  val entityCreated = Signal.create<DEntity>()
 
   /** A signal emitted when an entity is destroyed. */
-  val entityDestroyed = DSignal<DEntity>()
+  val entityDestroyed = Signal.create<DEntity>()
 
   /** Returns the keys for all entities of type [E]. */
   fun <E : DEntity> keys (ecomp :DCompanion<E>) :Collection<Long> = _etable(ecomp).entities.keys

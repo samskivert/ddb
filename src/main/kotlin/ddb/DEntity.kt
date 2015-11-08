@@ -7,11 +7,25 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 import react.*
 
-/** An entity distributed between client and server.
+/** An entity that is distributed between client and server.
   *
   * TODO: more details.
   */
-abstract class DEntity (val id :Long) : DReactor() {
+abstract class DEntity : DReactor() {
+
+  /** Represents an entity with a unique key. */
+  abstract class Keyed (val id :Long) : DEntity() {
+
+    /** Returns a reference to this entity's companion singleton. */
+    abstract val companion :DCompanion<DEntity.Keyed>
+  }
+
+  /** Represents an entity for which only a single instance ever exists. */
+  abstract class Singleton (val id :Long) : DEntity() {
+
+    /** Returns a reference to this entity's companion singleton. */
+    abstract val companion :DCompanion<DEntity.Singleton>
+  }
 
   fun <T> onEmit (prop :KProperty<T>, fn :(T) -> Unit) :Connection {
     return addCons(object : Cons(this) {
@@ -46,9 +60,6 @@ abstract class DEntity (val id :Long) : DReactor() {
     }
     private var _conn = Closeable.Util.NOOP
   }
-
-  /** Returns a reference to this entity's companion singleton. */
-  abstract val companion :DCompanion<DEntity>
 
   inner class DValue<T> (initVal :T) {
     private var _curval = initVal

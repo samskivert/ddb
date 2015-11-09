@@ -40,17 +40,18 @@ class EphemeralServer : DServer() {
       return ent ?: throw IllegalArgumentException("No ${emeta.entityName} entity with id: $id")
     }
 
-    override fun <E : DEntity.Keyed> create (emeta :DEntity.Keyed.Meta<E>) :E {
+    override fun <E : DEntity.Keyed> create (emeta :DEntity.Keyed.Meta<E>, init :(E) -> Unit) :E {
       val table = _etable(emeta)
       val id = table.nextId
       table.nextId += 1
-      return table.create(emeta, id)
+      return table.create(emeta, id, init)
     }
 
-    override fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>) :E {
+    override fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>,
+                                               init :(E) -> Unit) :E {
       val table = _etable(emeta)
       table.remove(id)
-      return table.create(emeta, id)
+      return table.create(emeta, id, init)
     }
 
     override fun destroy (entity :DEntity.Keyed) {
@@ -73,9 +74,10 @@ class EphemeralServer : DServer() {
       var nextId = 1L
       val entities = HashMap<Long, E>()
 
-      fun create (emeta :DEntity.Keyed.Meta<E>, id :Long) :E {
+      fun create (emeta :DEntity.Keyed.Meta<E>, id :Long, init :(E) -> Unit) :E {
         val entity = emeta.create(id)
         entities.put(id, entity)
+        init(entity)
         entityCreated.emit(entity)
         return entity
       }

@@ -16,11 +16,17 @@ abstract class DDB (val id :String) {
   abstract class Source (id :String) : DDB(id) {
 
     /** Creates a new keyed entity via `emeta` assigning it a new unique id.
+      * @param init a function that will be called to initialize the entity before it is announced
+      * to the world via [entityCreated].
       * @return the newly created entity. */
-    abstract fun <E : DEntity.Keyed> create (emeta :DEntity.Keyed.Meta<E>) :E
+    abstract fun <E : DEntity.Keyed> create (emeta :DEntity.Keyed.Meta<E>, init :(E) -> Unit) :E
 
-    /** Destroys the entity `id` and creates a new entity via `emeta` with the same id. */
-    abstract fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>) :E
+    /** Destroys the entity `id` and creates a new entity via `emeta` with the same id.
+      * @param init a function that will be called to initialize the entity before it is announced
+      * to the world via [entityCreated].
+      * @return the newly recreated entity. */
+    abstract fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>,
+                                               init :(E) -> Unit) :E
 
     /** Destroys `entity`, removing it from the database. */
     abstract fun destroy (entity :DEntity.Keyed)

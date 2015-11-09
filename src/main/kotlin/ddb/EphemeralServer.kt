@@ -5,7 +5,6 @@ package ddb
 
 import java.util.*
 import react.RFuture
-import kotlin.reflect.KClass
 
 /**
  * A server that creates in-memory databases which are not backed by any persistent store. Useful
@@ -16,7 +15,7 @@ class EphemeralServer : DServer() {
   /** Returns a "local" client that returns dbs directly from this ephemeral server. */
   fun localClient () :DClient = object : DClient() {
     override fun open (id :String) = RFuture.success<DDB>(openDB(id))
-    override fun open (id :List<String>) = RFuture.success<List<DDB>>(id.map { openDB(it) })
+    override fun open (ids :List<String>) = RFuture.success<List<DDB>>(ids.map { openDB(it) })
     override fun close (ddb :DDB) {} // noop
   }
 
@@ -48,10 +47,6 @@ class EphemeralServer : DServer() {
       return table.create(emeta, id)
     }
 
-    override fun <E : DEntity.Singleton> create (emeta :DEntity.Singleton.Meta<E>) :E {
-      throw UnsupportedOperationException("TODO")
-    }
-
     override fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>) :E {
       val table = _etable(emeta)
       table.remove(id)
@@ -62,15 +57,14 @@ class EphemeralServer : DServer() {
       _etable(entity.meta).remove(entity.id)
     }
 
-    override fun <S : DService> register (sclass :KClass<S>, service :S) {
+    override fun <S : DService> register (sclass :Class<S>, service :S) {
       val prev = _services.put(sclass, service)
       assert(prev == null) { "Duplicate service registered for $sclass: had $prev got $service" }
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <S : DService> service (sclass :KClass<S>) :S =
-      (_services.get(sclass) as S?) ?:
-        throw IllegalArgumentException("No provider registered for $sclass")
+    override fun <S : DService> service (sclass :Class<S>) :S = (_services.get(sclass) as S?) ?:
+      throw IllegalArgumentException("No provider registered for $sclass")
 
     private fun <E : DEntity.Keyed> _etable (emeta :DEntity.Keyed.Meta<E>) =
       _entities.get(emeta.entityName) as ETable<E>
@@ -96,7 +90,7 @@ class EphemeralServer : DServer() {
       meta -> ETable<DEntity.Keyed>() }
     private val _singles = Util.cacheMap<DEntity.Singleton.Meta<*>,DEntity.Singleton> {
       it.create() }
-    private val _services = HashMap<KClass<*>,DService>()
+    private val _services = HashMap<Class<*>,DService>()
   }
 
   private val _dbs = Util.cacheMap<String,EphemeralDDB> { id -> EphemeralDDB(id) }

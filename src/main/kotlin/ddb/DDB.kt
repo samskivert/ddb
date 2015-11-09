@@ -5,7 +5,6 @@ package ddb
 
 import java.util.*
 import react.Signal
-import kotlin.reflect.KClass
 
 /**
  * Maintains a database of reactive entities.
@@ -23,15 +22,11 @@ abstract class DDB (val id :String) {
     /** Destroys the entity `id` and creates a new entity via `emeta` with the same id. */
     abstract fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>) :E
 
-    /** Creates a the singleton entity for `emeta`.
-      * @return the newly created entity. */
-    abstract fun <E : DEntity.Singleton> create (emeta :DEntity.Singleton.Meta<E>) :E
-
     /** Destroys `entity`, removing it from the database. */
     abstract fun destroy (entity :DEntity.Keyed)
 
     /** Registers `service` as the provider of `S` in this ddb. */
-    abstract fun <S : DService> register (sclass :KClass<S>, service :S) :Unit
+    abstract fun <S : DService> register (sclass :Class<S>, service :S) :Unit
   }
 
   /** A signal emitted when an entity is created. */
@@ -46,8 +41,7 @@ abstract class DDB (val id :String) {
   /** Returns all entities of type [E]. */
   abstract fun <E : DEntity.Keyed> entities (emeta :DEntity.Keyed.Meta<E>) :Collection<E>
 
-  /** Returns the singleton entity of the specified type.
-    * @throws IllegalArgumentException if no singleton exists for `emeta`. */
+  /** Returns the singleton entity of the specified type, creating it if necessary. */
   abstract fun <E : DEntity.Singleton> get (emeta :DEntity.Singleton.Meta<E>) :E
 
   /** Returns the entity of the specified type with id `id`.
@@ -56,5 +50,5 @@ abstract class DDB (val id :String) {
 
   /** Resolves and returns the service with class `sclass`.
     * @throws IllegalArgumentException if no provider for `sclass` is registered with this ddb. */
-  abstract fun <S : DService> service (sclass :KClass<S>) :S
+  abstract fun <S : DService> service (sclass :Class<S>) :S
 }

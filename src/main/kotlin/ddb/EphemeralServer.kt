@@ -16,6 +16,7 @@ class EphemeralServer : DServer() {
   /** Returns a "local" client that returns dbs directly from this ephemeral server. */
   fun localClient () :DClient = object : DClient() {
     override fun open (id :String) = RFuture.success<DDB>(openDB(id))
+    override fun open (id :List<String>) = RFuture.success<List<DDB>>(id.map { openDB(it) })
     override fun close (ddb :DDB) {} // noop
   }
 

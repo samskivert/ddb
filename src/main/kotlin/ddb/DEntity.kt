@@ -13,18 +13,33 @@ import react.*
   */
 abstract class DEntity : DReactor() {
 
+  /** Identifies entity types. */
+  interface Meta {
+    val entityName :String
+  }
+
   /** Represents an entity with a unique key. */
   abstract class Keyed (val id :Long) : DEntity() {
 
-    /** Returns a reference to this entity's companion singleton. */
-    abstract val companion :DCompanion<DEntity.Keyed>
+    /** The meta type for keyed entities. */
+    interface Meta<out E : Keyed> : DEntity.Meta {
+      fun create (id :Long) :E
+    }
+
+    /** Returns a reference to this entity's meta singleton. */
+    abstract val meta :Meta<Keyed>
   }
 
   /** Represents an entity for which only a single instance ever exists. */
-  abstract class Singleton (val id :Long) : DEntity() {
+  abstract class Singleton : DEntity() {
 
-    /** Returns a reference to this entity's companion singleton. */
-    abstract val companion :DCompanion<DEntity.Singleton>
+    /** The meta type for keyed entities. */
+    interface Meta<out E : Singleton> : DEntity.Meta {
+      fun create () :E
+    }
+
+    /** Returns a reference to this entity's meta singleton. */
+    abstract val meta :Meta<Singleton>
   }
 
   fun <T> onEmit (prop :KProperty<T>, fn :(T) -> Unit) :Connection {

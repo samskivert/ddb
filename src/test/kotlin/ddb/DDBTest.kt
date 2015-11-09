@@ -8,8 +8,8 @@ import org.junit.Assert.*
 
 class DDBTest {
 
-  class TestEntity (id :Long) : DEntity(id) {
-    companion object :DCompanion<TestEntity> {
+  class TestEntity (id :Long) : DEntity.Keyed(id) {
+    companion object : Meta<TestEntity> {
       val Name = TestEntity::name
       val Age  = TestEntity::age
       override val entityName = "test"
@@ -19,13 +19,13 @@ class DDBTest {
     var name :String by dvalue(1, "")
     var age :Int by dvalue(1, 0)
 
-    override val companion = Companion
+    override val meta = Companion
   }
 
   @Test fun testCRUD () {
     val server = EphemeralServer()
     val ddb = server.openDB("test")
-    val ent = ddb.create(TestEntity.Companion)
+    val ent = ddb.create(TestEntity)
     ent.onEmit(TestEntity.Age) { age ->
       println("Age changed $age")
     }

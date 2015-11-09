@@ -15,50 +15,50 @@ class EphemeralServer : DServer() {
 
   /** Returns a "local" client that returns dbs directly from this ephemeral server. */
   fun localClient () :DClient = object : DClient() {
-    override fun open (id :String) = RFuture.success(openDB(id))
+    override fun open (id :String) = RFuture.success<DDB>(openDB(id))
     override fun close (ddb :DDB) {} // noop
   }
 
-  override fun openDB (id :String) :DDB = _dbs.get(id)
+  override fun openDB (id :String) :DDB.Source = _dbs.get(id)
 
-  override fun destroyDB (ddb :DDB) { _dbs.invalidate(ddb.id) }
+  override fun destroyDB (ddb :DDB.Source) { _dbs.invalidate(ddb.id) }
 
   class EphemeralDDB (id :String) : DDB.Source(id) {
 
-    override fun <E : DEntity.Keyed> keys (ecomp :DCompanion<E>) :Collection<Long> =
-      _etable(ecomp).entities.keys
+    override fun <E : DEntity.Keyed> keys (emeta :DEntity.Keyed.Meta<E>) :Collection<Long> =
+      _etable(emeta).entities.keys
 
-    override fun <E : DEntity.Keyed> entities (ecomp :DCompanion<E>) :Collection<E> =
-      _etable(ecomp).entities.values
+    override fun <E : DEntity.Keyed> entities (emeta :DEntity.Keyed.Meta<E>) :Collection<E> =
+      _etable(emeta).entities.values
 
     @Suppress("UNCHECKED_CAST")
-    override fun <E : DEntity.Singleton> singleton (ecomp :DCompanion<E>) :E =
-      _singles.get(ecomp) as E
+    override fun <E : DEntity.Singleton> get (emeta :DEntity.Singleton.Meta<E>) :E =
+      _singles.get(emeta) as E
 
-    override fun <E : DEntity.Keyed> get (ecomp :DCompanion<E>, id :Long) :E {
-      val ent = _etable(ecomp).entities[id]
-      return ent ?: throw IllegalArgumentException("No ${ecomp.entityName} entity with id: $id")
+    override fun <E : DEntity.Keyed> get (emeta :DEntity.Keyed.Meta<E>, id :Long) :E {
+      val ent = _etable(emeta).entities[id]
+      return ent ?: throw IllegalArgumentException("No ${emeta.entityName} entity with id: $id")
     }
 
-    override fun <E : DEntity.Keyed> create (ecomp :DCompanion<E>) :E {
-      val table = _etable(ecomp)
+    override fun <E : DEntity.Keyed> create (emeta :DEntity.Keyed.Meta<E>) :E {
+      val table = _etable(emeta)
       val id = table.nextId
       table.nextId += 1
-      return table.create(ecomp, id)
+      return table.create(emeta, id)
     }
 
-    override fun <E : DEntity.Singleton> createSingleton (ecomp :DCompanion<E>) :E {
+    override fun <E : DEntity.Singleton> create (emeta :DEntity.Singleton.Meta<E>) :E {
       throw UnsupportedOperationException("TODO")
     }
 
-    override fun <E : DEntity.Keyed> recreate (id :Long, ecomp :DCompanion<E>) :E {
-      val table = _etable(ecomp)
+    override fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>) :E {
+      val table = _etable(emeta)
       table.remove(id)
-      return table.create(ecomp, id)
+      return table.create(emeta, id)
     }
 
     override fun destroy (entity :DEntity.Keyed) {
-      _etable(entity.companion).remove(entity.id)
+      _etable(entity.meta).remove(entity.id)
     }
 
     override fun <S : DService> register (sclass :KClass<S>, service :S) {
@@ -71,15 +71,15 @@ class EphemeralServer : DServer() {
       (_services.get(sclass) as S?) ?:
         throw IllegalArgumentException("No provider registered for $sclass")
 
-    private fun <E : DEntity.Keyed> _etable (ecomp :DCompanion<E>) =
-      _entities.get(ecomp.entityName) as ETable<E>
+    private fun <E : DEntity.Keyed> _etable (emeta :DEntity.Keyed.Meta<E>) =
+      _entities.get(emeta.entityName) as ETable<E>
 
     private inner class ETable<E : DEntity.Keyed> {
       var nextId = 1L
       val entities = HashMap<Long, E>()
 
-      fun create (ecomp :DCompanion<E>, id :Long) :E {
-        val entity = ecomp.create(id)
+      fun create (emeta :DEntity.Keyed.Meta<E>, id :Long) :E {
+        val entity = emeta.create(id)
         entities.put(id, entity)
         entityCreated.emit(entity)
         return entity
@@ -92,8 +92,9 @@ class EphemeralServer : DServer() {
     }
 
     private val _entities = Util.cacheMap<String,ETable<DEntity.Keyed>> {
-      comp -> ETable<DEntity.Keyed>() }
-    private val _singles = Util.cacheMap<DCompanion<DEntity>,DEntity> { it.create(1L) }
+      meta -> ETable<DEntity.Keyed>() }
+    private val _singles = Util.cacheMap<DEntity.Singleton.Meta<*>,DEntity.Singleton> {
+      it.create() }
     private val _services = HashMap<KClass<*>,DService>()
   }
 

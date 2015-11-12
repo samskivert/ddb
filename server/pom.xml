@@ -7,28 +7,16 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>ddb-client</artifactId>
+  <artifactId>ddb-server</artifactId>
   <packaging>jar</packaging>
 
-  <name>ddb-client</name>
+  <name>ddb-server</name>
 
   <dependencies>
     <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>18.0</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.threerings</groupId>
-      <artifactId>react</artifactId>
-      <version>1.5.2</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-stdlib</artifactId>
-      <version>${kotlin.version}</version>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>ddb-client</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 

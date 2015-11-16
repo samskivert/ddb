@@ -25,7 +25,7 @@ class DDBTest {
   @Test fun testCRUD () {
     val server = EphemeralServer()
     val ddb = server.openDB("test")
-    val ent = ddb.create(TestEntity)
+    val ent = ddb.create(TestEntity, {})
     ent.onEmit(TestEntity.Age) { age ->
       println("Age changed $age")
     }

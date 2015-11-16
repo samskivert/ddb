@@ -87,9 +87,9 @@ abstract class DReactor {
                 try {
                     cons.notify(p, a1, a2)
                 } catch (ex :RuntimeException) {
-                    // kotlin seems to refuse to find addSuppressed
-                    /*if (exn != null) exn.addSuppressed(ex)
-                    else*/ exn = ex
+                    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+                    if (exn != null) (exn as java.lang.Throwable).addSuppressed(ex)
+                    else exn = ex
                 }
                 if (cons.oneShot) cons.close()
                 cons = cons.next
@@ -105,9 +105,9 @@ abstract class DReactor {
                 try {
                     run.run()
                 } catch (ex :RuntimeException) {
-                    // kotlin seems to refuse to find addSuppressed
-                    /*if (exn != null) exn.addSuppressed(ex)
-                    else*/ exn = ex
+                    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+                    if (exn != null) (exn as java.lang.Throwable).addSuppressed(ex)
+                    else exn = ex
                 }
                 run = nextRun()
             }

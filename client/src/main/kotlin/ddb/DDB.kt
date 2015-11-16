@@ -8,32 +8,12 @@ import react.Signal
 
 /**
  * Maintains a database of reactive entities.
+ *
+ * @property key a string key that uniquely identifies this database across time.
+ * @property id an ephemeral but unique id assigned to this database. Used internally for routing
+ * messages between client and server.
  */
-abstract class DDB (val id :String) {
-
-  /** Extends [DDB] with operations that are only applicable on the source database. The source
-    * database is maintained on the server, whereas clients have proxies to that source. */
-  abstract class Source (id :String) : DDB(id) {
-
-    /** Creates a new keyed entity via `emeta` assigning it a new unique id.
-      * @param init a function that will be called to initialize the entity before it is announced
-      * to the world via [entityCreated].
-      * @return the newly created entity. */
-    abstract fun <E : DEntity.Keyed> create (emeta :DEntity.Keyed.Meta<E>, init :(E) -> Unit) :E
-
-    /** Destroys the entity `id` and creates a new entity via `emeta` with the same id.
-      * @param init a function that will be called to initialize the entity before it is announced
-      * to the world via [entityCreated].
-      * @return the newly recreated entity. */
-    abstract fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>,
-                                               init :(E) -> Unit) :E
-
-    /** Destroys `entity`, removing it from the database. */
-    abstract fun destroy (entity :DEntity.Keyed)
-
-    /** Registers `service` as the provider of `S` in this ddb. */
-    abstract fun <S : DService> register (sclass :Class<S>, service :S) :Unit
-  }
+abstract class DDB (val key :String, val id :Int) {
 
   /** A signal emitted when an entity is created. */
   val entityCreated = Signal.create<DEntity>()

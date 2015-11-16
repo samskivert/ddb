@@ -104,7 +104,7 @@ fun ByteBuffer.putDoubleArray (vals :DoubleArray) {
 fun ByteBuffer.getStringArray () :Array<String> {
   val array = arrayOfNulls<String>(getInt())
   var ii = 0 ; while (ii < array.size) array[ii++] = getString()
-  return array as Array<String>
+  return uncheckedCast<Array<String>>(array)
 }
 fun ByteBuffer.putStringArray (vals :Array<String>) {
   putInt(vals.size)

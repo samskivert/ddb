@@ -6,7 +6,7 @@ package ddb
 import java.nio.ByteBuffer
 import java.util.HashMap
 
-open class DProtocol (szerCount :Int) {
+abstract class DProtocol (szerCount :Int) {
 
   private var _nextId = 0
   private val _byId = arrayOfNulls<DSerializer<*>>(DSerializers.Defaults.size+szerCount)
@@ -23,23 +23,25 @@ open class DProtocol (szerCount :Int) {
   /** Reads a type id from `buf` followed by a value of that type. */
   fun get (buf :ByteBuffer) :Any = serializer<Any>(buf.getShort()).get(this, buf)
 
-  @Suppress("UNCHECKED_CAST")
+  /** Returns the serializer for value of `type`. */
   fun <T> serializer (type :Class<T>) :DSerializer<T> {
     val szer = _byType[type]
     if (szer == null) throw IllegalArgumentException("No serializer for $type")
-    return szer as DSerializer<T>
+    return uncheckedCast<DSerializer<T>>(szer)
   }
 
-  @Suppress("UNCHECKED_CAST")
+  /** Returns the serializer for entity of `type`. */
   fun <T : DEntity> entitySerializer (type :Class<T>) :DEntitySerializer<T> =
-    serializer(type) as DEntitySerializer<T>
+    uncheckedCast<DEntitySerializer<T>>(serializer(type))
 
-  @Suppress("UNCHECKED_CAST")
   fun <T> serializer (id :Short) :DSerializer<T> = try {
-    _byId[id.toInt()] as DSerializer<T>
+    uncheckedCast<DSerializer<T>>(_byId[id.toInt()]!!)
   } catch (e :ArrayIndexOutOfBoundsException) {
     throw IllegalArgumentException("No serializer for id $id")
   }
+
+  /** Creates a dispatcher for [DService] `type`. */
+  abstract fun <S : DService> dispatcher (type :Class<S>, impl :S) :DService.Dispatcher
 
   protected fun register (szer :DSerializer<*>) {
     szer.init(_nextId.toShort())

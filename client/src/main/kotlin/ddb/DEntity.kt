@@ -44,23 +44,21 @@ abstract class DEntity : DReactor() {
 
   fun <T> onEmit (prop :KProperty<T>, fn :(T) -> Unit) :Connection {
     return addCons(object : Cons(this) {
-      @Suppress("UNCHECKED_CAST")
       override fun notify (p :KProperty<*>, a1: Any, a2: Any) {
-        if (areEqual(p, prop)) fn(a1 as T)
+        if (areEqual(p, prop)) fn(uncheckedCast<T>(a1))
       }
     })
   }
 
   fun <T> onChange (prop :KProperty<T>, fn :(T, T) -> Unit) :Connection =
     addCons(object : Cons(this) {
-      @Suppress("UNCHECKED_CAST")
       override fun notify (p :KProperty<*>, a1 :Any, a2 :Any) {
-        if (areEqual(p, prop)) fn(a1 as T, a2 as T)
+        if (areEqual(p, prop)) fn(uncheckedCast<T>(a1), uncheckedCast<T>(a2))
       }
     })
 
   fun <T> view (prop :KProperty<T>) :ValueView<T> = object : AbstractValue<T>() {
-    override fun get () = (prop as KProperty1<DEntity,T>).get(this@DEntity)
+    override fun get () = uncheckedCast<KProperty1<DEntity,T>>(prop).get(this@DEntity)
     override fun toString () = prop.toString()
 
     override protected fun connectionAdded () {
@@ -87,10 +85,7 @@ abstract class DEntity : DReactor() {
   }
 
   /** Defines a reactive component of this entity. */
-  protected fun <T> dvalue (schemaVers :Int, initVal :T) : DValue<T> {
-    // TODO: registering with schema (using version), etc.
-    return DValue(initVal)
-  }
+  protected fun <T> dvalue (initVal :T) : DValue<T> = DValue(initVal)
 
   /** Reports to listeners when a property has changed. */
   private fun <T> emitChange (prop :KProperty<*>, oldval :T, newval :T) {

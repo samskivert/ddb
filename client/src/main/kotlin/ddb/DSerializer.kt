@@ -5,16 +5,10 @@ package ddb
 
 import java.nio.ByteBuffer
 
-abstract class DSerializer<T> (val type :Class<T>) {
+abstract class DSerializer<T> (type :Class<T>) : DProtocol.Component(type) {
 
   abstract fun get (pcol :DProtocol, buf :ByteBuffer) :T
   abstract fun put (pcol :DProtocol, buf :ByteBuffer, obj :T) :Unit
-
-  val id :Short
-    get () = _id
-
-  internal fun init (id :Short) { _id = id }
-  private var _id = 0.toShort()
 }
 
 abstract class DEntitySerializer<T> (type :Class<T>) : DSerializer<T>(type) {

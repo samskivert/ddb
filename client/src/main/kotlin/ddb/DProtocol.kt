@@ -6,11 +6,23 @@ package ddb
 import java.nio.ByteBuffer
 import java.util.HashMap
 
-abstract class DProtocol (szerCount :Int) {
+abstract class DProtocol (compCount :Int) {
+
+  /** A base for classes that compal either data or service requests over the wire. There is a one
+    * to one correspondence between a compaller and a concrete type (either data, [DEntity]
+    * subtype, or [DService] subtype. */
+  abstract class Component (val type :Class<*>) {
+    /** Returns the unique id assigned to this compaller. */
+    val id :Short
+      get () = _id
+
+    internal fun init (id :Short) { _id = id }
+    private var _id = 0.toShort()
+  }
 
   private var _nextId = 0
-  private val _byId = arrayOfNulls<DSerializer<*>>(DSerializers.Defaults.size+szerCount)
-  private val _byType = HashMap<Class<*>,DSerializer<*>>(_byId.size)
+  private val _byId = arrayOfNulls<Component>(DSerializers.Defaults.size+compCount)
+  private val _byType = HashMap<Class<*>,Component>(_byId.size)
   init { for (szer in DSerializers.Defaults) register(szer) }
 
   /** Writes an arbitrary value to `buf`, preceded by its type id. */
@@ -40,12 +52,13 @@ abstract class DProtocol (szerCount :Int) {
     throw IllegalArgumentException("No serializer for id $id")
   }
 
-  /** Creates a dispatcher for [DService] `type`. */
-  abstract fun <S : DService> dispatcher (type :Class<S>, impl :S) :DService.Dispatcher
+  /** Returns the [DService.Factory] for `type`. */
+  fun <S : DService> factory (type :Class<S>) :DService.Factory<S> =
+    uncheckedCast<DService.Factory<S>>(_byType[type]!!)
 
-  protected fun register (szer :DSerializer<*>) {
-    szer.init(_nextId.toShort())
-    _byId[_nextId++] = szer
-    _byType[szer.type] = szer
+  protected fun register (comp :Component) {
+    comp.init(_nextId.toShort())
+    _byId[_nextId++] = comp
+    _byType[comp.type] = comp
   }
 }

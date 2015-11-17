@@ -6,7 +6,7 @@ package ddb
 /** Extends [DDB] with operations that are only applicable on the source database. The source
   * database is maintained on the server, whereas clients have proxies to that source.
   */
-abstract class DDBSource (key :String, id :Int) : DDB(key, id) {
+abstract class SourceDB (key :String, id :Int) : BaseDB(key, id), DMessage.Source {
 
   /** Registers `service` as the provider of `S` in this ddb. */
   abstract fun <S : DService> register (sclass :Class<S>, service :S) :Unit
@@ -26,6 +26,9 @@ abstract class DDBSource (key :String, id :Int) : DDB(key, id) {
 
   /** Destroys `entity`, removing it from the database. */
   abstract fun destroy (entity :DEntity.Keyed)
+
+  /** Returns all entities in this DDB in a format suitable for blasting to a client. */
+  abstract fun allEntities () :Collection<Collection<DEntity>>
 
   /** Closes this database. */
   abstract fun close () :Unit

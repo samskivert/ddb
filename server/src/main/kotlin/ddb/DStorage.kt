@@ -14,10 +14,10 @@ abstract class DStorage {
    * Opens the database with the specified `key`, assigning it the ephemeral id `id`. This should
    * create the database in the backing store if necessary. The storage implementation need not
    * cache database instances, the server will keep the database around until closed. Storage need
-   * only concern itself with instantiating a concrete [DDBSource] implementation backed by the
+   * only concern itself with instantiating a concrete [SourceDB] implementation backed by the
    * appropriate storage mechanism.
    */
-  abstract fun openDB (key :String, id :Int) :DDBSourceImpl
+  abstract fun openDB (key :String, id :Int) :SourceDBImpl
 
   /**
    * Destroys the database identified by `key`, removing all traces of it from the persistent store.

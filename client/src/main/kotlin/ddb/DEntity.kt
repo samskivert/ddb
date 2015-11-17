@@ -59,6 +59,7 @@ abstract class DEntity : DReactor() {
 
   fun <T> view (prop :KProperty<T>) :ValueView<T> = object : AbstractValue<T>() {
     override fun get () = uncheckedCast<KProperty1<DEntity,T>>(prop).get(this@DEntity)
+    @Suppress("NO_REFLECTION_IN_CLASS_PATH")
     override fun toString () = prop.toString()
 
     override protected fun connectionAdded () {

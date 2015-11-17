@@ -12,18 +12,10 @@ import react.RFuture
  */
 class EphemeralStorage (val server :DServer) : DStorage() {
 
-  /** Returns a "local" client that returns dbs directly from this ephemeral server. */
-  fun localClient () :DClient = object : DClient() {
-    override fun open (id :String) = RFuture.success<DDB>(server.openDB(id))
-    override fun open (ids :List<String>) = RFuture.success<List<DDB>>(
-      ids.map { server.openDB(it) })
-    override fun close (ddb :DDB) {} // noop
-  }
-
   override fun openDB (key :String, id :Int) = EphemeralDDB(key, id, server)
   override fun destroyDB (key :String) {} // nothing needed
 
-  class EphemeralDDB (key :String, id :Int, server :DServer) : DDBSourceImpl(key, id, server) {
+  class EphemeralDDB (key :String, id :Int, server :DServer) : SourceDBImpl(key, id, server) {
 
     override fun <E : DEntity.Keyed> keys (emeta :DEntity.Keyed.Meta<E>) :Collection<Long> =
       _etable(emeta).entities.keys
@@ -52,6 +44,8 @@ class EphemeralStorage (val server :DServer) : DStorage() {
       table.remove(id)
       return table.create(emeta, id, init)
     }
+
+    override fun allEntities () = _entities.asMap().values.map { it.entities.values }
 
     override fun destroy (entity :DEntity.Keyed) {
       _etable(entity.meta).remove(entity.id)

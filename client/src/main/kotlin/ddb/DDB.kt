@@ -13,7 +13,7 @@ import react.Signal
  * @property id an ephemeral but unique id assigned to this database. Used internally for routing
  * messages between client and server.
  */
-abstract class DDB (val key :String, val id :Int) {
+abstract class BaseDB (val key :String, val id :Int) {
 
   /** A signal emitted when an entity is created. */
   val entityCreated = Signal.create<DEntity>()
@@ -33,6 +33,13 @@ abstract class DDB (val key :String, val id :Int) {
   /** Returns the entity of the specified type with id `id`.
     * @throws IllegalArgumentException if no entity exists with that id. */
   abstract fun <E : DEntity.Keyed> get (emeta :DEntity.Keyed.Meta<E>, id :Long) :E
+}
+
+/**
+ * Extends [BaseDB] with bits only available on the client, which is a proxy of the source database
+ * maintained on the server.
+ */
+abstract class DDB (key :String, id :Int) : BaseDB(key, id) {
 
   /** Resolves and returns the service with class `sclass`.
     * @throws IllegalArgumentException if no provider for `sclass` is registered with this ddb. */

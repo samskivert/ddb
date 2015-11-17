@@ -33,21 +33,26 @@ abstract class DServer (val exec :Executor) {
   fun isDBOpen (key :String) :Boolean = _dbsByKey.asMap().containsKey(key)
 
   /** Opens the database identified by `key`, resolving it from persistent storage if necessary. */
-  fun openDB (key :String) :DDBSource = _dbsByKey.get(key)
+  fun openDB (key :String) :SourceDB = _dbsByKey.get(key)
 
   /** Returns the database with `id` or null. */
-  fun getDB (id :Int) :DDB? = _dbsById[id]
+  fun getDB (id :Int) :SourceDB? = _dbsById[id]
 
-  internal fun closeDB (ddb :DDBSource) {
+  internal fun closeDB (ddb :SourceDB) {
     _dbsByKey.invalidate(ddb.key)
     _dbsById.remove(ddb.id)
   }
 
+  internal fun dispatch (dmsg :DMessage, session :DSession) { when (dmsg) {
+    is DMessage.SubscribeReq -> _dbsByKey[dmsg.dbKey]?.subscribe(session)
+    is DMessage.ServiceReq   -> _dbsById[dmsg.dbId]?.call(dmsg, session.svcRsp(dmsg))
+  }}
+
   private val _nextServiceId = AtomicInteger(1)
-  private val _dbsByKey = Util.cacheMap<String,DDBSourceImpl> { key ->
+  private val _dbsByKey = Util.cacheMap<String,SourceDBImpl> { key ->
     storage.openDB(key, _nextServiceId.getAndIncrement()).apply {
       _dbsById.put(id, this)
     }
   }
-  private val _dbsById = ConcurrentHashMap<Int,DDBSourceImpl>()
+  private val _dbsById = ConcurrentHashMap<Int,SourceDBImpl>()
 }

@@ -4,8 +4,6 @@
 package ddb
 
 import react.RFuture
-import react.SignalView
-import react.Try
 
 /**
  * Marker trait for services which are provided by a [DDB]. Service methods must only accept
@@ -14,11 +12,23 @@ import react.Try
  */
 interface DService {
 
+  /** Wires [DService] into the [DProtocol] system. */
+  abstract class Factory<S : DService> (type :Class<S>) : DProtocol.Component(type) {
+    /** Creates a marshaller for our service with the supplied configuration. */
+    abstract fun marshaller (source :DMessage.Source) :Marshaller<S>
+    /** Creates a dispatcher for our service that uses `impl` to do its actual work. */
+    abstract fun dispatcher (impl :S) :Dispatcher
+  }
+
+  /** Handles the marshalling of service calls into [DMessage.ServiceReq] messages and sending them
+    * along for delivery to the server. A concrete marshaller class is generated for all [DService]
+    * subtypes. */
+  abstract class Marshaller<T> (val svcId :Int, val source :DMessage.Source)
+
   /** Handles unmarshalling [DMessage.ServiceReq] messages, calling the appropriate [DService]
     * method, and wiring up a response listener. */
-  abstract class Dispatcher (val impl :DService) {
-
-    /** Dispatches `req` to `impl`, routing the result to `onRsp`. */
-    abstract fun dispatch (req :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) :Unit
+  abstract class Dispatcher (val svcId :Int, val impl :DService) {
+    /** Dispatches `req` to `impl`, returning its future result. */
+    abstract fun dispatch (req :DMessage.ServiceReq) :RFuture<Any>
   }
 }

@@ -27,8 +27,11 @@ abstract class SourceDB (key :String, id :Int) : BaseDB(key, id), DMessage.Sourc
   /** Destroys `entity`, removing it from the database. */
   abstract fun destroy (entity :DEntity.Keyed)
 
-  /** Returns all entities in this DDB in a format suitable for blasting to a client. */
-  abstract fun allEntities () :Collection<Collection<DEntity>>
+  /** Returns all keyed entities in this DDB in a format suitable for blasting to a client. */
+  abstract fun keyedEntities () :Collection<Collection<DEntity.Keyed>>
+
+  /** Returns all singleton entities in this DDB in a format suitable for blasting to a client. */
+  abstract fun singleEntities () :Collection<DEntity.Singleton>
 
   /** Closes this database. */
   abstract fun close () :Unit

@@ -48,17 +48,23 @@ abstract class DMessage : DData {
     override fun toString () = "SubscribeReq(db=$dbKey)"
   }
   /** Indicates DDB subscribe success. */
-  class SubscribedRsp (val dbKey :String, val entities :Collection<Collection<DEntity>>,
-                       val services :Map<Class<*>,Int>) : DMessage() {
+  class SubscribedRsp (val dbKey :String, val dbId :Int,
+                       val keyeds :Collection<Collection<DEntity.Keyed>>,
+                       val singles :Collection<DEntity.Singleton>,
+                       val services :Collection<Class<*>>) : DMessage() {
     override val sizeHint :Int
-      get () = 8092 // TODOL adjust based on entities size?
-    override fun toString () =
-      "SubscribedRsp(key=$dbKey, ents=${entities.size}, svcs=${services.size})"
+      get () = 16*1024 // TODOL adjust based on count of entities?
+    override fun toString () = "SubscribedRsp(key=$dbKey, id=$dbId, kents=${keyeds.size}, " +
+      "sents=${singles.size}, svcs=${services.size})"
   }
-
   /** Indicates DDB subscribe failure. */
   class SubFailedRsp (val dbKey :String, val cause :String) : DMessage() {
     override fun toString () = "SubFailedRsp(key=$dbKey, cause=$cause)"
+  }
+
+  /** Requests to unsubscribe from the DDB identified by `dbKey`. Client to server. */
+  class UnsubscribeReq (val dbKey :String) : DMessage() {
+    override fun toString () = "UnsubscribeReq(db=$dbKey)"
   }
 
   /** Initiates a [DService] call. Client to server. */
@@ -66,13 +72,20 @@ abstract class DMessage : DData {
     override fun toString () = "ServiceReq(db=$dbId, svc=$svcId, req=$reqId)"
   }
   // TODO: just stick 'args :Array<Any?> in ServiceReq?
+  /** Simplifies life when dispatching [DService] responses. */
+  abstract class ServiceRsp (val reqId :Int) : DMessage () {
+    abstract val result :Try<Any>
+    override fun toString () = "ServiceRsp(req=$reqId, res=$result)"
+  }
   /** Indicates a successful [DService] call. */
-  class CalledRsp (val reqId :Int, val result :Any) : DMessage() {
-    override fun toString () = "CalledRsp(req=$reqId, res=$result)"
+  class CalledRsp (reqId :Int, val value :Any) : ServiceRsp(reqId) {
+    override val result :Try<Any>
+      get () = Try.success(value)
   }
   /** Indicates a failed [DService] call. */
-  class FailedRsp (val reqId :Int, val cause :String) : DMessage() {
-    override fun toString () = "FailedRsp(req=$reqId, cause=$cause)"
+  class FailedRsp (reqId :Int, val cause :String) : ServiceRsp(reqId) {
+    override val result :Try<Any>
+      get () = Try.failure(Exception(cause))
   }
 
   /** Communicates an entity property change. Server to client. */

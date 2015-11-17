@@ -23,7 +23,7 @@ interface DService {
   /** Handles the marshalling of service calls into [DMessage.ServiceReq] messages and sending them
     * along for delivery to the server. A concrete marshaller class is generated for all [DService]
     * subtypes. */
-  abstract class Marshaller<T> (val svcId :Int, val source :DMessage.Source)
+  abstract class Marshaller<T : DService> (val svcId :Int, val source :DMessage.Source) : DService
 
   /** Handles unmarshalling [DMessage.ServiceReq] messages, calling the appropriate [DService]
     * method, and wiring up a response listener. */

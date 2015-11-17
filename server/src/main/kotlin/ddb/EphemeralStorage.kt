@@ -45,14 +45,15 @@ class EphemeralStorage (val server :DServer) : DStorage() {
       return table.create(emeta, id, init)
     }
 
-    override fun allEntities () = _entities.asMap().values.map { it.entities.values }
+    override fun keyedEntities () = _keyeds.asMap().values.map { it.entities.values }
+    override fun singleEntities () = _singles.asMap().values
 
     override fun destroy (entity :DEntity.Keyed) {
       _etable(entity.meta).remove(entity.id)
     }
 
     private fun <E : DEntity.Keyed> _etable (emeta :DEntity.Keyed.Meta<E>) =
-      uncheckedCast<ETable<E>>(_entities.get(emeta.entityName))
+      uncheckedCast<ETable<E>>(_keyeds.get(emeta.entityName))
 
     private inner class ETable<E : DEntity.Keyed> {
       var nextId = 1L
@@ -72,7 +73,7 @@ class EphemeralStorage (val server :DServer) : DStorage() {
       }
     }
 
-    private val _entities = Util.cacheMap<String,ETable<DEntity.Keyed>> {
+    private val _keyeds = Util.cacheMap<String,ETable<DEntity.Keyed>> {
       meta -> ETable<DEntity.Keyed>() }
     private val _singles = Util.cacheMap<DEntity.Singleton.Meta<*>,DEntity.Singleton> {
       it.create() }

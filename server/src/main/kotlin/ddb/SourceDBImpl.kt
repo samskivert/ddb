@@ -77,7 +77,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   }
 
   private fun processSubscribe (sess :DSession) {
-    sess.send(DMessage.SubscribedRsp(key, allEntities(), _services))
+    sess.send(DMessage.SubscribedRsp(key, id, keyedEntities(), singleEntities(), _services))
     // TODO: add sess to subscribers list and send PropChanged events thereto
   }
   private fun processUnsubscribe (sess :DSession) {

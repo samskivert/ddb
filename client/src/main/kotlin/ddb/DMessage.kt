@@ -48,44 +48,12 @@ abstract class DMessage : DData {
     override fun toString () = "SubscribeReq(db=$dbKey)"
   }
   /** Indicates DDB subscribe success. */
-  class SubscribedRsp (val dbKey :String, val dbId :Int,
-                       val keyeds :Collection<Collection<DEntity.Keyed>>,
-                       val singles :Collection<DEntity.Singleton>,
+  class SubscribedRsp (val dbKey :String, val dbId :Int, val entities :Collection<DEntity>,
                        val services :Collection<Class<*>>) : DMessage() {
     override val sizeHint :Int
       get () = 16*1024 // TODOL adjust based on count of entities?
-    override fun toString () = "SubscribedRsp(key=$dbKey, id=$dbId, kents=${keyeds.size}, " +
-      "sents=${singles.size}, svcs=${services.size})"
-
-    companion object {
-      val serializer = object : DSerializer<SubscribedRsp>(SubscribedRsp::class.java) {
-        override fun get (pcol :DProtocol, buf :ByteBuffer) = SubscribedRsp(
-          buf.getString(),
-          buf.getInt(),
-          getEntityLists(pcol, buf),
-          buf.getCollection(pcol, ddb.DEntity.Singleton::class.java),
-          buf.getCollection(pcol, java.lang.Class::class.java)
-        )
-        override fun put (pcol :DProtocol, buf :ByteBuffer, obj :SubscribedRsp) {
-          buf.putString(obj.dbKey)
-          buf.putInt(obj.dbId)
-          putEntityLists(pcol, buf, obj.keyeds)
-          buf.putCollection(pcol, ddb.DEntity.Singleton::class.java, obj.singles)
-          buf.putCollection(pcol, java.lang.Class::class.java, obj.services)
-        }
-      }
-
-      fun getEntityLists (pcol :DProtocol, buf :ByteBuffer) :Collection<Collection<DEntity.Keyed>> {
-        val count = buf.getInt()
-        val entityLists = arrayListOf<Collection<DEntity.Keyed>>()
-        for (ii in 1..count) entityLists.add(buf.getCollection(pcol, DEntity.Keyed::class.java))
-        return entityLists
-      }
-      fun putEntityLists (pcol :DProtocol, buf :ByteBuffer, lists :Collection<Collection<DEntity.Keyed>>) {
-        buf.putInt(lists.size)
-        for (list in lists) buf.putCollection(pcol, DEntity.Keyed::class.java, list)
-      }
-    }
+    override fun toString () = "SubscribedRsp(key=$dbKey, id=$dbId, ents=${entities.size}, " +
+      "svcs=${services.size})"
   }
 
   /** Indicates DDB subscribe failure. */
@@ -120,5 +88,5 @@ abstract class DMessage : DData {
   }
 
   /** Communicates an entity property change. Server to client. */
-  class PropChange (val dbId :Int, val entId :Int, val propId :Int, val value :Any) : DMessage()
+  class PropChange (val dbId :Int, val entId :Long, val propId :Short, val value :Any) : DMessage()
 }

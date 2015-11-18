@@ -6,32 +6,26 @@ package ddb
 /** Extends [DDB] with operations that are only applicable on the source database. The source
   * database is maintained on the server, whereas clients have proxies to that source.
   */
-abstract class SourceDB (key :String, id :Int) : BaseDB(key, id), DMessage.Source {
+abstract class SourceDB (key :String, id :Int) : BaseDB(key, id), DService.Host, DEntity.Host {
 
   /** Registers `service` as the provider of `S` in this ddb. */
   abstract fun <S : DService> register (sclass :Class<S>, service :S) :Unit
 
-  /** Creates a new keyed entity via `emeta` assigning it a new unique id.
+  /** Creates a new entity via `emeta` assigning it a new unique id.
     * @param init a function that will be called to initialize the entity before it is announced
     * to the world via [entityCreated].
     * @return the newly created entity. */
-  abstract fun <E : DEntity.Keyed> create (emeta :DEntity.Keyed.Meta<E>, init :(E) -> Unit) :E
+  abstract fun <E : DEntity> create (emeta :DEntity.Meta<E>, init :(E) -> Unit) :E
 
   /** Destroys the entity `id` and creates a new entity via `emeta` with the same id.
     * @param init a function that will be called to initialize the entity before it is announced
     * to the world via [entityCreated].
     * @return the newly recreated entity. */
-  abstract fun <E : DEntity.Keyed> recreate (id :Long, emeta :DEntity.Keyed.Meta<E>,
+  abstract fun <E : DEntity> recreate (id :Long, emeta :DEntity.Meta<E>,
                                              init :(E) -> Unit) :E
 
   /** Destroys `entity`, removing it from the database. */
-  abstract fun destroy (entity :DEntity.Keyed)
-
-  /** Returns all keyed entities in this DDB in a format suitable for blasting to a client. */
-  abstract fun keyedEntities () :Collection<Collection<DEntity.Keyed>>
-
-  /** Returns all singleton entities in this DDB in a format suitable for blasting to a client. */
-  abstract fun singleEntities () :Collection<DEntity.Singleton>
+  abstract fun destroy (entity :DEntity)
 
   /** Closes this database. */
   abstract fun close () :Unit

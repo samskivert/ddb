@@ -3,6 +3,7 @@
 
 package ddb
 
+import java.nio.ByteBuffer
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 import react.*
@@ -11,37 +12,26 @@ import react.*
   *
   * TODO: more details.
   */
-abstract class DEntity : DReactor() {
+abstract class DEntity (val id :Long) : DReactor() {
+
+  /** Allows an entity to communicate with the [DDB] that is hosting it. */
+  interface Host {
+    /** The id of the [DDB] hosting this entity. */
+    val id :Int
+    /** Forwards a property change message to interested parties. */
+    fun forward (change :DMessage.PropChange) :Unit
+  }
 
   /** Identifies entity types. */
-  interface Meta {
+  interface Meta <out E : DEntity> {
     val entityName :String
+    fun create (id :Long) :E
   }
 
-  /** Represents an entity with a unique key. */
-  abstract class Keyed (val id :Long) : DEntity() {
+  /** Returns a reference to this entity's meta singleton. */
+  abstract val meta :Meta<DEntity>
 
-    /** The meta type for keyed entities. */
-    interface Meta<out E : Keyed> : DEntity.Meta {
-      fun create (id :Long) :E
-    }
-
-    /** Returns a reference to this entity's meta singleton. */
-    abstract val meta :Meta<Keyed>
-  }
-
-  /** Represents an entity for which only a single instance ever exists. */
-  abstract class Singleton : DEntity() {
-
-    /** The meta type for keyed entities. */
-    interface Meta<out E : Singleton> : DEntity.Meta {
-      fun create () :E
-    }
-
-    /** Returns a reference to this entity's meta singleton. */
-    abstract val meta :Meta<Singleton>
-  }
-
+  /** Registers `fn` to be called when `prop` changes. */
   fun <T> onEmit (prop :KProperty<T>, fn :(T) -> Unit) :Connection {
     return addCons(object : Cons(this) {
       override fun notify (p :KProperty<*>, a1: Any, a2: Any) {
@@ -50,6 +40,7 @@ abstract class DEntity : DReactor() {
     })
   }
 
+  /** Registers `fn` to be called when `prop` changes. */
   fun <T> onChange (prop :KProperty<T>, fn :(T, T) -> Unit) :Connection =
     addCons(object : Cons(this) {
       override fun notify (p :KProperty<*>, a1 :Any, a2 :Any) {
@@ -57,6 +48,7 @@ abstract class DEntity : DReactor() {
       }
     })
 
+  /** Returns a [ValueView] for `prop`, which exports `prop` as a reactive value. */
   fun <T> view (prop :KProperty<T>) :ValueView<T> = object : AbstractValue<T>() {
     override fun get () = uncheckedCast<KProperty1<DEntity,T>>(prop).get(this@DEntity)
     @Suppress("NO_REFLECTION_IN_CLASS_PATH")
@@ -88,11 +80,37 @@ abstract class DEntity : DReactor() {
   /** Defines a reactive component of this entity. */
   protected fun <T> dvalue (initVal :T) : DValue<T> = DValue(initVal)
 
-  /** Reports to listeners when a property has changed. */
+  // exposed implementation details, please to ignore
+  fun _init (host :Host, szer :DEntitySerializer<*>) {
+    _host = host
+    _szer = uncheckedCast<DEntitySerializer<DEntity>>(szer)
+  }
+  fun _apply (change :DMessage.PropChange) {
+    _szer.apply(this, change.propId, change.value)
+  }
+
   private fun <T> emitChange (prop :KProperty<*>, oldval :T, newval :T) {
-    notify(prop, newval as Any, oldval as Any)
+    _host.forward(DMessage.PropChange(_host.id, id, _szer.id(prop.name), newval as Any))
+    notify(prop, newval, oldval as Any)
   }
 
   private fun areEqual (prop0 :KProperty<*>, prop1 :KProperty<*>) :Boolean =
     prop0.name == prop1.name // TODO
+
+  private var _host = NoopHost
+  private var _szer = NoopSzer
+
+  companion object {
+    val NoopHost = object : Host {
+      override val id = 0
+      override fun forward (change :DMessage.PropChange) {}
+    }
+    val NoopSzer = object : DEntitySerializer<DEntity>(DEntity::class.java) {
+      override fun create (buf :ByteBuffer) :DEntity = throw AssertionError()
+      override fun read (pcol :DProtocol, buf :ByteBuffer, obj :DEntity) {}
+      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :DEntity) {}
+      override fun id (propName :String) = 0.toShort()
+      override fun apply (ent :DEntity, propId :Short, value :Any) {}
+    }
+  }
 }

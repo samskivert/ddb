@@ -26,6 +26,9 @@ abstract class DEntitySerializer<T> (type :Class<T>) : DSerializer<T>(type) {
 
   abstract fun create (buf :ByteBuffer) :T
   abstract fun read (pcol :DProtocol, buf :ByteBuffer, obj :T) :Unit
+
+  abstract fun id (propName :String) :Short
+  abstract fun apply (ent :T, propId :Short, value :Any) :Unit
 }
 
 object DSerializers {

@@ -13,8 +13,8 @@ abstract class DClient {
 
   /** Opens the database keyed `key`, subscribing to changes thereto until it is closed. */
   fun openDB (key :String) :RFuture<DDB> {
-    val ddb = _ddbs.get(key)
-    return if (ddb != null) RFuture.success(ddb)
+    val ddb = _dbsByKey[key]
+    return if (ddb != null) RFuture.success<DDB>(ddb)
     else {
       val rsp = _pendingOpens[key]
       if (rsp != null) rsp
@@ -30,14 +30,17 @@ abstract class DClient {
   /** Closes `ddb`, ceasing all change notifications. The client should not reference `ddb` or any
     * entity contained therein after `ddb` has been closed. */
   fun closeDB (ddb :DDB) {
-    if (_ddbs.remove(ddb.key) != null) send(DMessage.UnsubscribeReq(ddb.key))
-    else reportError("Closed unopen DB? [key=${ddb.key}]", Exception())
+    if (_dbsByKey.remove(ddb.key) != null) {
+      _dbsById.remove(ddb.id)
+      send(DMessage.UnsubscribeReq(ddb.key))
+    } else reportError("Closed unopen DB? [key=${ddb.key}]", Exception())
   }
 
   /** Called when something bad happens in the client. Implement as desired. */
   abstract fun reportError (msg :String, err :Throwable?) :Unit
 
-  protected abstract fun send (msg :DMessage) :Unit
+  /** Sends a message to the server. */
+  abstract fun send (msg :DMessage) :Unit
 
   internal fun sendCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) {
     _pendingCalls.put(msg.reqId, onRsp)
@@ -53,7 +56,8 @@ abstract class DClient {
   protected fun recv (msg :DMessage) :Unit = when (msg) {
     is DMessage.SubscribedRsp -> {
       val ddb = DDBImpl(this, msg)
-      _ddbs[msg.dbKey] = ddb
+      _dbsByKey[msg.dbKey] = ddb
+      _dbsById[msg.dbId] = ddb
       val onOpen = _pendingOpens.remove(msg.dbKey)
       if (onOpen != null) onOpen.succeed(ddb)
       else reportError("Missing listener for $msg", null)
@@ -68,11 +72,16 @@ abstract class DClient {
       if (onRsp != null) onRsp.onEmit(msg.result)
       else reportError("Missing listener for $msg", null)
     }
-    is DMessage.PropChange -> {}
+    is DMessage.PropChange -> {
+      val ddb = _dbsById[msg.dbId]
+      if (ddb != null) ddb.apply(msg)
+      else reportError("Got PropChange for unknown db $msg", null)
+    }
     else -> reportError("Unknown message: $msg", null)
   }
 
-  private val _ddbs = hashMapOf<String,DDB>()
+  private val _dbsByKey = hashMapOf<String,DDBImpl>()
+  private val _dbsById = hashMapOf<Int,DDBImpl>()
   private val _pendingOpens = hashMapOf<String,RPromise<DDB>>()
   private val _pendingCalls = hashMapOf<Int,SignalView.Listener<Try<Any>>>()
 }

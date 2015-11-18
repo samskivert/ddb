@@ -10,7 +10,7 @@ import org.junit.Assert.*
 
 class DDBTest {
 
-  class TestEntity (id :Long) : DEntity.Keyed(id) {
+  class TestEntity (id :Long) : DEntity(id) {
     companion object : Meta<TestEntity> {
       val Name = TestEntity::name
       val Age  = TestEntity::age

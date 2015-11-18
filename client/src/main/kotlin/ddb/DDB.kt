@@ -22,17 +22,22 @@ abstract class BaseDB (val key :String, val id :Int) {
   val entityDestroyed = Signal.create<DEntity>()
 
   /** Returns the keys for all entities of type [E]. */
-  abstract fun <E : DEntity.Keyed> keys (emeta :DEntity.Keyed.Meta<E>) :Collection<Long>
+  abstract fun <E : DEntity> keys (emeta :DEntity.Meta<E>) :Collection<Long>
 
   /** Returns all entities of type [E]. */
-  abstract fun <E : DEntity.Keyed> entities (emeta :DEntity.Keyed.Meta<E>) :Collection<E>
-
-  /** Returns the singleton entity of the specified type, creating it if necessary. */
-  abstract fun <E : DEntity.Singleton> get (emeta :DEntity.Singleton.Meta<E>) :E
+  abstract fun <E : DEntity> entities (emeta :DEntity.Meta<E>) :Collection<E>
 
   /** Returns the entity of the specified type with id `id`.
     * @throws IllegalArgumentException if no entity exists with that id. */
-  abstract fun <E : DEntity.Keyed> get (emeta :DEntity.Keyed.Meta<E>, id :Long) :E
+  abstract fun <E : DEntity> get (id :Long) :E
+
+  /** Returns the singleton entity of the specified type.
+    * @throws IllegalArgumentException if no singleton entity exists for `emeta`. */
+  fun <E : DEntity> get (emeta :DEntity.Meta<E>) :E {
+    val iter = entities(emeta).iterator()
+    if (iter.hasNext()) return iter.next()
+    else throw IllegalArgumentException("No singleton registered for $emeta")
+  }
 }
 
 /**

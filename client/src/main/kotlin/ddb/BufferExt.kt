@@ -3,6 +3,7 @@
 
 package ddb
 
+import java.lang.reflect.Modifier
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.ArrayList
@@ -17,10 +18,17 @@ fun ByteBuffer.putString (str :String) { putByteArray(str.toByteArray(StandardCh
 fun ByteBuffer.getAny (pcol :DProtocol) :Any = pcol.get(this)
 fun ByteBuffer.putAny (pcol :DProtocol, value :Any) :Unit = pcol.put(this, value)
 
-fun <T : DData> ByteBuffer.getValue (pcol :DProtocol, clazz :Class<T>) :T =
-  pcol.serializer(clazz).get(pcol, this)
-fun <T : DData> ByteBuffer.putValue (pcol :DProtocol, clazz :Class<T>, value :T) :Unit =
-  pcol.serializer(clazz).put(pcol, this, value)
+private fun isFinal (clazz :Class<*>) = Modifier.isFinal(clazz.getModifiers())
+
+fun <T : DData> ByteBuffer.getValue (pcol :DProtocol, clazz :Class<T>) :T {
+  return if (isFinal(clazz)) pcol.serializer(clazz).get(pcol, this)
+  else pcol.serializer<T>(getShort()).get(pcol, this)
+}
+fun <T : DData> ByteBuffer.putValue (pcol :DProtocol, clazz :Class<T>, value :T) {
+  val szer = pcol.serializer(clazz)
+  if (!isFinal(clazz)) putShort(szer.id)
+  szer.put(pcol, this, value)
+}
 
 fun ByteBuffer.getBooleanArray () :BooleanArray {
   val array = BooleanArray(getInt())
@@ -113,23 +121,51 @@ fun ByteBuffer.putStringArray (vals :Array<String>) {
 }
 
 fun <T> ByteBuffer.getList (pcol :DProtocol, clazz :Class<T>) :List<T> {
-  val szer = pcol.serializer(clazz)
   val length = getInt() ; val list = ArrayList<T>(length)
-  var ii = 0 ; while (ii++ < length) list.add(szer.get(pcol, this))
+  if (isFinal(clazz)) pcol.serializer(clazz).get(pcol, this, length, list)
+  else while (list.size < length) pcol.serializer<T>(
+    getShort()).get(pcol, this, getShort().toInt(), list)
   return list
 }
+
 fun <T> ByteBuffer.putList (pcol :DProtocol, clazz :Class<T>, list :List<T>) {
-  val szer = pcol.serializer(clazz) ; val length = list.size
-  putInt(length)
-  var ii = 0 ; while (ii < length) szer.put(pcol, this, list[ii++])
+  val length = list.size ; putInt(length)
+  if (!isFinal(clazz)) putSegs(pcol, list.iterator(), clazz, 0, list.iterator())
+  else {
+    // pointless micro-optimization to avoid calling list.iterator(); why do I do these things?
+    val szer = pcol.serializer(clazz)
+    var ii = 0 ; while (ii < length) szer.put(pcol, this, list[ii++])
+  }
 }
 
 fun <T> ByteBuffer.getCollection (pcol :DProtocol, clazz :Class<T>) :Collection<T> =
   getList(pcol, clazz)
 fun <T> ByteBuffer.putCollection (pcol :DProtocol, clazz :Class<T>, elems :Collection<T>) {
-  val szer = pcol.serializer(clazz) ; val length = elems.size
-  putInt(length)
-  val iter = elems.iterator() ; while (iter.hasNext()) szer.put(pcol, this, iter.next())
+  val length = elems.size ; putInt(length)
+  if (isFinal(clazz)) pcol.serializer(clazz).put(pcol, this, length, elems.iterator())
+  else putSegs(pcol, elems.iterator(), clazz, 0, elems.iterator())
+}
+
+// this writes <class code> <count> <elem ...> for consecutive runs of same-typed elements
+private tailrec fun <T> ByteBuffer.putSegs (pcol :DProtocol, citer :Iterator<T>, clazz :Class<T>,
+                                            count :Int, iter :Iterator<T>) {
+  if (!citer.hasNext()) {
+    if (count > 0) putSeg(pcol, clazz, count, iter)
+  } else {
+    val nclazz = uncheckedCast<Class<T>>((citer.next() as Any).javaClass)
+    if (nclazz == clazz) putSegs(pcol, citer, clazz, count+1, iter)
+    else {
+      if (count > 0) putSeg(pcol, clazz, count, iter)
+      putSegs(pcol, citer, nclazz, 1, iter)
+    }
+  }
+}
+private fun <T> ByteBuffer.putSeg (pcol :DProtocol, clazz :Class<T>,
+                                   count :Int, iter :Iterator<T>) {
+  val szer = pcol.serializer(clazz)
+  putShort(szer.id)
+  putShort(count.toShort())
+  szer.put(pcol, this, count, iter)
 }
 
 fun <K,V> ByteBuffer.getMap (pcol :DProtocol, kclazz :Class<K>, vclazz :Class<V>) :Map<K,V> {
@@ -139,7 +175,16 @@ fun <K,V> ByteBuffer.getMap (pcol :DProtocol, kclazz :Class<K>, vclazz :Class<V>
   return map
 }
 fun <K,V> ByteBuffer.putMap (pcol :DProtocol, kclazz :Class<K>, vclazz :Class<V>, map :Map<K,V>) {
-  val kszer = pcol.serializer(kclazz) ; val vszer = pcol.serializer(vclazz) ; val size = map.size
-  putInt(size)
-  for ((k, v) in map.entries) { kszer.put(pcol, this, k) ; vszer.put(pcol, this, v) }
+  val size = map.size ; putInt(size)
+  val kfinal = isFinal(kclazz) ; val vfinal = isFinal(vclazz)
+  if (kfinal && vfinal) {
+    val kszer = pcol.serializer(kclazz) ; val vszer = pcol.serializer(vclazz)
+    for ((k, v) in map.entries) { kszer.put(pcol, this, k) ; vszer.put(pcol, this, v) }
+  } else if (kfinal) {
+    val kszer = pcol.serializer(kclazz)
+    for ((k, v) in map.entries) { kszer.put(pcol, this, k) ; pcol.put(this, v as Any) }
+  } else if (vfinal) {
+    val vszer = pcol.serializer(vclazz)
+    for ((k, v) in map.entries) { pcol.put(this, k as Any) ; vszer.put(pcol, this, v) }
+  }
 }

@@ -9,6 +9,13 @@ abstract class DSerializer<T> (type :Class<T>) : DProtocol.Component(type) {
 
   abstract fun get (pcol :DProtocol, buf :ByteBuffer) :T
   abstract fun put (pcol :DProtocol, buf :ByteBuffer, obj :T) :Unit
+
+  fun get (pcol :DProtocol, buf :ByteBuffer, count :Int, into :MutableCollection<T>) {
+    var ii = 0 ; while (ii++ < count) into.add(get(pcol, buf))
+  }
+  fun put (pcol :DProtocol, buf :ByteBuffer, count :Int, iter :Iterator<T>) {
+    var ii = 0 ; while (ii++ < count) put(pcol, buf, iter.next())
+  }
 }
 
 abstract class DEntitySerializer<T> (type :Class<T>) : DSerializer<T>(type) {
@@ -73,5 +80,12 @@ object DSerializers {
     override fun put (pcol :DProtocol, buf :ByteBuffer, obj :String) { buf.putString(obj) }
   }
 
-  val Defaults = arrayOf(Void, Boolean, Byte, Char, Short, Int, Long, Float, Double, String)
+  val Class = object : DSerializer<Class<*>>(Class::class.java) {
+    override fun get (pcol :DProtocol, buf :ByteBuffer) :Class<*> =
+      pcol.serializer<Any>(buf.getShort()).type
+    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :Class<*>) {
+      buf.putShort(pcol.serializer(obj).id) }
+  }
+
+  val Defaults = arrayOf(Void, Boolean, Byte, Char, Short, Int, Long, Float, Double, String, Class)
 }

@@ -15,9 +15,15 @@ abstract class DClient {
   fun openDB (key :String) :RFuture<DDB> {
     val ddb = _ddbs.get(key)
     return if (ddb != null) RFuture.success(ddb)
-    else _pendingOpens.getOrPut(key) {
-      send(DMessage.SubscribeReq(key))
-      RPromise.create<DDB>()
+    else {
+      val rsp = _pendingOpens[key]
+      if (rsp != null) rsp
+      else {
+        val nrsp = RPromise.create<DDB>()
+        _pendingOpens[key] = nrsp
+        send(DMessage.SubscribeReq(key))
+        nrsp
+      }
     }
   }
 

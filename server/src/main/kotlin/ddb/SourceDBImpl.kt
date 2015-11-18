@@ -37,6 +37,9 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
     if (_active == null) scheduleNext()
   }
 
+  // TODO: bulk registry of entities loaded from persistent store
+  // TODO: how to tell storage that an entity changed and should be saved, ditto deleted?
+
   // from BaseDB
   override fun <E : DEntity> keys (emeta :DEntity.Meta<E>) = etable(emeta).keys
   override fun <E : DEntity> entities (emeta :DEntity.Meta<E>) = etable(emeta).values
@@ -76,8 +79,11 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   }
 
   // from DEntity.Host
-  override fun forward (change :DMessage.PropChange) {
-    // TODO: dispatch to subscribers
+  override fun onChange (entity :DEntity, propId :Short, value :Any) {
+    // turn this message into a blob of bytes
+    val buf = DMessage.PropChange(id, entity.id, propId, value).flatten(server.proto)
+    // send those bytes to all of our subscribers
+    for (sess in _subscribers) sess.send(buf)
   }
 
   /** Schedules the next operation in this context on our executor. */
@@ -95,10 +101,10 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
 
   private fun processSubscribe (sess :DSession) {
     sess.send(DMessage.SubscribedRsp(key, id, _entities.values, _services.keys))
-    // TODO: add sess to subscribers list and send PropChanged events thereto
+    _subscribers += sess
   }
   private fun processUnsubscribe (sess :DSession) {
-    // TODO: remove sess from subscribers list
+    _subscribers -= sess
   }
 
   private fun <E : DEntity> create (emeta :DEntity.Meta<E>, id :Long, init :(E) -> Unit) :E {
@@ -124,13 +130,10 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   private val _byType = hashMapOf<String,HashMap<Long,DEntity>>()
   private var _nextId = 1L
 
-  /** The queue of operations pending on this context. */
-  private val _ops = ArrayDeque<Runnable>()
-  /** The currently active operation, or null. */
-  private var _active :Runnable? = null
+  private val _services = hashMapOf<Class<*>,Int>()
+  private val _dispatchers = hashMapOf<Int,DService.Dispatcher>()
+  private val _subscribers = arrayListOf<DSession>()
 
-  /** A map from service class to id. */
-  private val _services = HashMap<Class<*>,Int>()
-  /** The registry of service dispatchers by id. */
-  private val _dispatchers = HashMap<Int,DService.Dispatcher>()
+  private val _ops = ArrayDeque<Runnable>()
+  private var _active :Runnable? = null
 }

@@ -23,11 +23,14 @@ class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey
     client.sendCall(msg, onRsp)
 
   // from DEntity.Host
-  override fun forward (change :DMessage.PropChange) = client.send(change)
+  override fun onChange (entity :DEntity, propId :Short, value :Any) {
+    throw UnsupportedOperationException("Cannot change entities directly on client " +
+      "[ent=$entity, pid=$propId, val=$value]")
+  }
 
   internal fun apply (msg :DMessage.PropChange) {
     val ent = _entities[msg.entId]
-    if (ent != null) ent._apply(msg)
+    if (ent != null) ent.apply(msg)
     else client.reportError("Missing entity for $msg", null)
   }
 

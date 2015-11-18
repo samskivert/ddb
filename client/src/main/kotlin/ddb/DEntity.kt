@@ -16,10 +16,8 @@ abstract class DEntity (val id :Long) : DReactor() {
 
   /** Allows an entity to communicate with the [DDB] that is hosting it. */
   interface Host {
-    /** The id of the [DDB] hosting this entity. */
-    val id :Int
-    /** Forwards a property change message to interested parties. */
-    fun forward (change :DMessage.PropChange) :Unit
+    /** Notifies our host that this entity has changed. */
+    fun onChange (entity :DEntity, propId :Short, value :Any) :Unit
   }
 
   /** Identifies entity types. */
@@ -80,17 +78,17 @@ abstract class DEntity (val id :Long) : DReactor() {
   /** Defines a reactive component of this entity. */
   protected fun <T> dvalue (initVal :T) : DValue<T> = DValue(initVal)
 
-  // exposed implementation details, please to ignore
+  // implementation details, please to ignore
   fun _init (host :Host, szer :DEntitySerializer<*>) {
     _host = host
     _szer = uncheckedCast<DEntitySerializer<DEntity>>(szer)
   }
-  fun _apply (change :DMessage.PropChange) {
+  internal fun apply (change :DMessage.PropChange) {
     _szer.apply(this, change.propId, change.value)
   }
 
   private fun <T> emitChange (prop :KProperty<*>, oldval :T, newval :T) {
-    _host.forward(DMessage.PropChange(_host.id, id, _szer.id(prop.name), newval as Any))
+    _host.onChange(this, _szer.id(prop.name), newval as Any)
     notify(prop, newval, oldval as Any)
   }
 
@@ -102,8 +100,7 @@ abstract class DEntity (val id :Long) : DReactor() {
 
   companion object {
     val NoopHost = object : Host {
-      override val id = 0
-      override fun forward (change :DMessage.PropChange) {}
+      override fun onChange (entity :DEntity, propId :Short, value :Any) {}
     }
     val NoopSzer = object : DEntitySerializer<DEntity>(DEntity::class.java) {
       override fun create (buf :ByteBuffer) :DEntity = throw AssertionError()

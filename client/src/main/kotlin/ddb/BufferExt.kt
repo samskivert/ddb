@@ -14,12 +14,13 @@ fun ByteBuffer.putBoolean (v :Boolean) { put(if (v) 1.toByte() else 0.toByte()) 
 fun ByteBuffer.getString () :String = String(getByteArray(), StandardCharsets.UTF_8)
 fun ByteBuffer.putString (str :String) { putByteArray(str.toByteArray(StandardCharsets.UTF_8)) }
 
-fun <T : DData> ByteBuffer.getValue (pcol :DProtocol, clazz :Class<T>) :T {
-  return pcol.serializer(clazz).get(pcol, this)
-}
-fun <T : DData> ByteBuffer.putValue (pcol :DProtocol, clazz :Class<T>, value :T) {
+fun ByteBuffer.getAny (pcol :DProtocol) :Any = pcol.get(this)
+fun ByteBuffer.putAny (pcol :DProtocol, value :Any) :Unit = pcol.put(this, value)
+
+fun <T : DData> ByteBuffer.getValue (pcol :DProtocol, clazz :Class<T>) :T =
+  pcol.serializer(clazz).get(pcol, this)
+fun <T : DData> ByteBuffer.putValue (pcol :DProtocol, clazz :Class<T>, value :T) :Unit =
   pcol.serializer(clazz).put(pcol, this, value)
-}
 
 fun ByteBuffer.getBooleanArray () :BooleanArray {
   val array = BooleanArray(getInt())
@@ -121,6 +122,14 @@ fun <T> ByteBuffer.putList (pcol :DProtocol, clazz :Class<T>, list :List<T>) {
   val szer = pcol.serializer(clazz) ; val length = list.size
   putInt(length)
   var ii = 0 ; while (ii < length) szer.put(pcol, this, list[ii++])
+}
+
+fun <T> ByteBuffer.getCollection (pcol :DProtocol, clazz :Class<T>) :Collection<T> =
+  getList(pcol, clazz)
+fun <T> ByteBuffer.putCollection (pcol :DProtocol, clazz :Class<T>, elems :Collection<T>) {
+  val szer = pcol.serializer(clazz) ; val length = elems.size
+  putInt(length)
+  val iter = elems.iterator() ; while (iter.hasNext()) szer.put(pcol, this, iter.next())
 }
 
 fun <K,V> ByteBuffer.getMap (pcol :DProtocol, kclazz :Class<K>, vclazz :Class<V>) :Map<K,V> {

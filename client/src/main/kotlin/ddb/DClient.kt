@@ -3,6 +3,7 @@
 
 package ddb
 
+import java.nio.ByteBuffer
 import react.*
 
 abstract class DClient {
@@ -11,7 +12,7 @@ abstract class DClient {
   abstract val proto :DProtocol
 
   /** Opens the database keyed `key`, subscribing to changes thereto until it is closed. */
-  fun open (key :String) :RFuture<DDB> {
+  fun openDB (key :String) :RFuture<DDB> {
     val ddb = _ddbs.get(key)
     return if (ddb != null) RFuture.success(ddb)
     else _pendingOpens.getOrPut(key) {
@@ -22,7 +23,7 @@ abstract class DClient {
 
   /** Closes `ddb`, ceasing all change notifications. The client should not reference `ddb` or any
     * entity contained therein after `ddb` has been closed. */
-  fun close (ddb :DDB) {
+  fun closeDB (ddb :DDB) {
     if (_ddbs.remove(ddb.key) != null) send(DMessage.UnsubscribeReq(ddb.key))
     else reportError("Closed unopen DB? [key=${ddb.key}]", Exception())
   }
@@ -35,6 +36,12 @@ abstract class DClient {
   internal fun sendCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) {
     _pendingCalls.put(msg.reqId, onRsp)
     send(msg)
+  }
+
+  protected fun recv (buf :ByteBuffer) {
+    val msg = proto.get(buf)
+    if (msg is DMessage) recv(msg)
+    else reportError("Got non-DMessage message: $msg", null)
   }
 
   protected fun recv (msg :DMessage) :Unit = when (msg) {

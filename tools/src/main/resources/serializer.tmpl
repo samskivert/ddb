@@ -1,5 +1,9 @@
   init {
     {{#metas}}
+    {{#hasCustom}}
+    register({{typeName}}.serializer)
+    {{/hasCustom}}
+    {{^hasCustom}}
     {{#isData}}
     {{#isEnum}}
     register(object : DSerializer<{{typeName}}>({{typeName}}::class.java) {
@@ -13,12 +17,12 @@
     register(object : DSerializer<{{typeName}}>({{typeName}}::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = {{typeName}}{{^isObject}}(
         {{#realProps}}
-        buf.get{{typeKind}}({{^isBuiltIn}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}{{/isBuiltIn}}){{^-last}},{{/-last}}
+        buf.get{{typeKind}}({{#needsProtocol}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}{{/needsProtocol}}){{^-last}},{{/-last}}
         {{/realProps}}
       ){{/isObject}}
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :{{typeName}}) {
         {{#realProps}}
-        buf.put{{typeKind}}({{^isBuiltIn}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}, {{/isBuiltIn}}obj.{{propName}})
+        buf.put{{typeKind}}({{#needsProtocol}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}, {{/needsProtocol}}obj.{{propName}})
         {{/realProps}}
       }
     })
@@ -33,7 +37,7 @@
         pcol.entitySerializer({{superName}}::class.java).read(pcol, buf, obj)
         {{/isEntityChild}}
         {{#delegateProps}}
-        obj.{{propName}} = buf.get{{typeKind}}({{^isBuiltIn}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}{{/isBuiltIn}})
+        obj.{{propName}} = buf.get{{typeKind}}({{#needsProtocol}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}{{/needsProtocol}})
         {{/delegateProps}}
       }
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :{{typeName}}) {
@@ -46,10 +50,11 @@
         {{/isKeyed}}
         {{/isEntityChild}}
         {{#delegateProps}}
-        buf.put{{typeKind}}({{^isBuiltIn}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}, {{/isBuiltIn}}obj.{{propName}})
+        buf.put{{typeKind}}({{#needsProtocol}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}, {{/needsProtocol}}obj.{{propName}})
         {{/delegateProps}}
       }
     })
     {{/isEntity}}
+    {{/hasCustom}}
     {{/metas}}
   }

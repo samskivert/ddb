@@ -65,11 +65,11 @@ fun extractMetas (sources :List<Path>) :List<ClassMeta> {
   }
 
   val szerMetas = arrayListOf<ClassMeta>()
-  for (meta in metas.values) {
-    meta.kind = kind(metas, meta)
-    if (meta.needsSzer) szerMetas += meta
-    // else println("NOSZER: ${kind(metas, meta)} ${meta.typeName}")
-  }
+  // first initialize all metas so they have their parents
+  for (meta in metas.values) meta.init(metas)
+  // then go through and check which need serializers
+  for (meta in metas.values) if (meta.needsSzer) szerMetas += meta
+  // else println("NOSZER: ${kind(metas, meta)} ${meta.typeName}")
 
   // for (meta in szerMetas) {
   //   println("${kind(metas, meta)} ${meta.typeName}")
@@ -114,7 +114,10 @@ fun extractMeta (metas :HashMap<String,ClassMeta>, name :String, reader :ClassRe
 class PropMeta (val propName :String, val typeName :String, val isDelegate :Boolean,
                 private val metas :Map<String,ClassMeta>) {
 
-  val isBuiltIn :Boolean = !typeName.contains('.')
+  val isBuiltIn :Boolean
+    get () = !typeName.contains('.')
+  val needsProtocol :Boolean
+    get () = !isBuiltIn || typeName == "Any"
 
   val rawType :String
     get () = rawType(typeName)
@@ -126,21 +129,39 @@ class PropMeta (val propName :String, val typeName :String, val isDelegate :Bool
     get () = metas[typeName]?.isEnum ?: false
 
   fun typeKind () :String = when(rawType) {
-    "java.util.List"   -> "List"
-    "java.util.Set"    -> "Set"
-    "java.util.Map"    -> "Map"
-    "java.util.String" -> "String"
-    else               -> if (isBuiltIn) typeName else "Value"
+    "java.util.List"       -> "List"
+    "java.util.Set"        -> "Set"
+    "java.util.Map"        -> "Map"
+    "java.util.Collection" -> "Collection"
+    "java.util.String"     -> "String"
+    else                   -> if (isBuiltIn) typeName else "Value"
   }
 
   override fun toString () = "$propName :$typeName"
 }
 
-data class ClassMeta (val typeName :String, val superName :String, val ifaces :List<String>,
-                      val props :List<PropMeta>, val directKind :Kind,
-                      val isAbstract :Boolean, val isObject :Boolean) {
+data class ClassMeta (val typeName :String, val superName :String, val ifaceNames :List<String>,
+                      val directProps :List<PropMeta>, val directKind :Kind,
+                      val isAbstract :Boolean, val isObject :Boolean, val hasCustom :Boolean) {
 
-  var kind :Kind = directKind // initted later once we have full type graph
+  var parent :ClassMeta? = null
+  var ifaces = listOf<ClassMeta>()
+
+  fun init (metas :Map<String,ClassMeta>){
+    parent = metas[superName]
+    val ifaces = arrayListOf<ClassMeta>()
+    for (name in ifaceNames) {
+      val iface = metas[name]
+      if (iface != null) ifaces += iface
+    }
+    this.ifaces = ifaces
+  }
+
+  val props :List<PropMeta>
+    get () = (parent?.props ?: emptyList()) + directProps
+
+  val kind :Kind by lazy { kind(this) }
+
   val isEnum :Boolean
     get () = this.superName == "java.lang.Enum"
   val isData :Boolean
@@ -160,6 +181,23 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaces :L
 
   fun realProps () = props.filter { !it.isDelegate }
   fun delegateProps () = props.filter { it.isDelegate }
+
+  companion object {
+    fun kind (meta :ClassMeta) :Kind {
+      if (meta.directKind != Kind.IGNORE) return meta.directKind
+      val smeta = meta.parent
+      if (smeta != null) {
+        // if our super class is an enum then we're a specialized enum subtype and we don't want a
+        // serializer, so remain IGNORE
+        if (smeta.isEnum) return Kind.IGNORE
+        if (smeta.kind != Kind.IGNORE) return smeta.kind
+      }
+      for (iface in meta.ifaces) {
+        if (iface.kind != Kind.IGNORE) return iface.kind
+      }
+      return Kind.IGNORE
+    }
+  }
 }
 
 enum class Kind { IGNORE, DATA, KEYED, SINGLETON }
@@ -177,7 +215,7 @@ private fun rawType (typeName :String) :String {
 private fun paramTypes (typeName :String) :List<String> {
   fun stripBounds (name :String) :String = stripPre("? super ", stripPre("? extends ", name))
   val braceIdx = typeName.indexOf('<')
-  return if (braceIdx == -1) listOf(typeName)
+  return if (braceIdx == -1) listOf()
   else splitParams(typeName.substring(braceIdx+1, typeName.length-1)).map {
     pt -> toKotlinType(stripBounds(pt.trim())) }
 }
@@ -209,35 +247,20 @@ private fun toKotlinType (javaType :String) :String = when(javaType) {
   "long"    -> "Long"
   "float"   -> "Float"
   "double"  -> "Double"
-  "java.lang.Boolean" -> "Boolean"
-  "java.lang.Byte" -> "Byte"
+  "java.lang.Boolean"   -> "Boolean"
+  "java.lang.Byte"      -> "Byte"
   "java.lang.Character" -> "Char"
-  "java.lang.Short" -> "Short"
-  "java.lang.Integer" -> "Int"
-  "java.lang.Long" -> "Long"
-  "java.lang.Float" -> "Float"
-  "java.lang.Double" -> "Double"
-  "java.lang.String" -> "String"
-  else      -> {
+  "java.lang.Short"     -> "Short"
+  "java.lang.Integer"   -> "Int"
+  "java.lang.Long"      -> "Long"
+  "java.lang.Float"     -> "Float"
+  "java.lang.Double"    -> "Double"
+  "java.lang.String"    -> "String"
+  "java.lang.Object"    -> "Any"
+  else -> {
     if (javaType.endsWith("[]")) toKotlinType(javaType.substring(0, javaType.length-2)) + "Array"
     else javaType
   }
-}
-
-private fun kind (metas :Map<String,ClassMeta>, meta :ClassMeta?) :Kind {
-  if (meta == null) return Kind.IGNORE
-  if (meta.kind != Kind.IGNORE) return meta.kind
-  val smeta = metas[meta.superName]
-  // if our super class is an enum then we're a specialized enum subtype and we don't want a
-  // serializer, so remain IGNORE
-  if (smeta != null && smeta.isEnum) return Kind.IGNORE
-  val skind = kind(metas, smeta)
-  if (skind != Kind.IGNORE) return skind
-  for (iface in meta.ifaces) {
-    val ikind = kind(metas, metas[iface])
-    if (ikind != Kind.IGNORE) return ikind
-  }
-  return Kind.IGNORE
 }
 
 class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5) {
@@ -249,6 +272,7 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
   protected var isAbstract = false
   protected var isObject = false
   protected var ignore = false
+  protected var hasCustom = false
 
   override fun visit (version :Int, access :Int, typeName :String, sig :String?, superName :String,
                       ifcs :Array<String>) {
@@ -283,20 +307,19 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
       if (name.endsWith("\$delegate")) {
         props += PropMeta(stripPost(name, "\$delegate"), paramTypes(typeName)[0], true, metas)
       } else {
+        // println("$tdesc -> $typeName -> ${toKotlinType(typeName)}")
         props += PropMeta(name, toKotlinType(typeName), false, metas)
       }
     } else {
       if (name == "INSTANCE$") isObject = true
+      else if (name == "serializer") hasCustom = true
     }
     return null
   }
 
   override fun visitEnd () {
-    if (!ignore) {
-      val meta = ClassMeta(typeName, superName, ifaces, props, kind, isAbstract, isObject)
-      // println(typeName)
-      metas.put(typeName, meta)
-    }
+    if (!ignore) metas.put(typeName, ClassMeta(typeName, superName, ifaces, props, kind,
+                                               isAbstract, isObject, hasCustom))
   }
 
   private fun accessToString (access :Int) :String {
@@ -333,6 +356,7 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
     val viz = TraceSignatureVisitor(access)
     SignatureReader(sig).accept(viz)
     val decl = viz.getDeclaration()
+    if (decl == "") return "java.lang.Object" // special hackery!
     // TraceSignatureVisitor calls visitSuperclass for some reason which tacks an ' extends ' onto
     // the start of everything, fuck knows why
     val cruft = " extends "

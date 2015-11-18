@@ -24,8 +24,13 @@ class GenSerializerTest {
     val strArrayVal :Array<String>,
     val strListVal :List<String>,
     val strIntMapVal :Map<String,Int>,
+    val strColVal :Collection<String>,
     val enumVal :TestEnum
-  ) :DData {}
+  ) : DData
+
+  open class BaseData (val intVal :Int, val strVal :String) : DData
+  class DerivedData (intVal :Int, strVal :String, val boolVal :Boolean, val anyVal :Any) :
+    BaseData(intVal, strVal)
 
   open class TestEntity (id :Long) : DEntity.Keyed(id) {
     companion object : Meta<TestEntity> {
@@ -39,13 +44,14 @@ class GenSerializerTest {
       override fun create (id :Long) = TestEntity(id)
     }
 
-    var boolProp   :Boolean  by dvalue(1, false)
-    var intProp    :Int      by dvalue(1, 0)
-    var stringProp :String   by dvalue(1, "")
-    var dataProp   :TestData by dvalue(1, TestData(1, intArrayOf(1, 2), listOf(1, 2, 3),
-                                                   "foo", arrayOf("bar", "baz"), listOf("quuxx"),
-                                                   hashMapOf("foo" to 1, "bar" to 2), TestEnum.BAR))
-    var enumProp   :TestEnum by dvalue(1, TestEnum.FOO)
+    var boolProp   :Boolean  by dvalue(false)
+    var intProp    :Int      by dvalue(0)
+    var stringProp :String   by dvalue("")
+    var dataProp   :TestData by dvalue(TestData(1, intArrayOf(1, 2), listOf(1, 2, 3),
+                                                "foo", arrayOf("bar", "baz"), listOf("quuxx"),
+                                                hashMapOf("foo" to 1, "bar" to 2),
+                                                listOf("bippie"), TestEnum.BAR))
+    var enumProp   :TestEnum by dvalue(TestEnum.FOO)
 
     override fun toString () = "$id $boolProp $intProp $stringProp $dataProp $enumProp"
     override val meta :Meta<TestEntity>
@@ -60,7 +66,7 @@ class GenSerializerTest {
       override fun create (id :Long) = DerivedEntity(id)
     }
 
-    var listProp :List<String> by dvalue(1, listOf<String>())
+    var listProp :List<String> by dvalue(listOf<String>())
 
     override fun toString () = "${super.toString()} $listProp"
     override val meta :Meta<DerivedEntity>
@@ -86,6 +92,7 @@ class GenSerializerTest {
           buf.getStringArray(),
           buf.getList(pcol, String::class.java),
           buf.getMap(pcol, String::class.java, Int::class.java),
+          buf.getCollection(pcol, String::class.java),
           buf.getValue(pcol, TestEnum::class.java)
         )
         override fun put (pcol :DProtocol, buf :ByteBuffer, obj :TestData) {
@@ -96,6 +103,7 @@ class GenSerializerTest {
           buf.putStringArray(obj.strArrayVal)
           buf.putList(pcol, String::class.java, obj.strListVal)
           buf.putMap(pcol, String::class.java, Int::class.java, obj.strIntMapVal)
+          buf.putCollection(pcol, String::class.java, obj.strColVal)
           buf.putValue(pcol, TestEnum::class.java, obj.enumVal)
         }
       })
@@ -137,7 +145,8 @@ class GenSerializerTest {
     val buf = ByteBuffer.allocate(1024)
     val data = TestData(42, intArrayOf(1, 3, 5, 7, 9), listOf(2, 4, 6, 8),
                         "peanut", arrayOf("who", "was", "that", "man"), listOf("kumar", "dude"),
-                        hashMapOf("foo" to 1, "bar" to 2, "answer" to 42), TestEnum.BAZ)
+                        hashMapOf("foo" to 1, "bar" to 2, "answer" to 42), listOf("pickle"),
+                        TestEnum.BAZ)
     val entity = TestEntity(2)
     entity.boolProp = true
     entity.intProp = 42
@@ -161,13 +170,23 @@ class GenSerializerTest {
     assertEquals(dentity.toString(), pcol.get(buf).toString())
   }
 
+  @Test fun testSelfSerializers () {
+    val root = Paths.get(System.getProperty("user.dir"))
+    val classes = root.resolve("..").resolve("client").resolve("target").resolve("classes")
+    // println(classes)
+    val out = StringWriter()
+    process(listOf(classes), out)
+    // println(out.toString())
+    // TODO: test something?
+  }
+
   @Test fun testSimpleSerializer () {
     val root = Paths.get(System.getProperty("user.dir"))
     val classes = root.resolve("target").resolve("test-classes")
     // println(classes)
     val out = StringWriter()
     process(listOf(classes), out)
-    println(out.toString())
+    // println(out.toString())
     // TODO: test something?
   }
 

@@ -128,6 +128,9 @@ class PropMeta (val propName :String, val typeName :String, val isDelegate :Bool
   val isEnum :Boolean
     get () = metas[typeName]?.isEnum ?: false
 
+  val metaName :String
+    get () = propName[0].toUpperCase() + propName.substring(1)
+
   fun typeKind () :String = when(rawType) {
     "java.util.List"       -> "List"
     "java.util.Set"        -> "Set"
@@ -167,20 +170,18 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaceName
   val isData :Boolean
     get () = kind == Kind.DATA
   val isEntity :Boolean
-    get () = isKeyed || isSingleton
-  val isKeyed :Boolean
-    get () = kind == Kind.KEYED
-  val isSingleton :Boolean
-    get () = kind == Kind.SINGLETON
-
+    get () = kind == Kind.ENTITY
   val isEntityChild :Boolean
     get () = directKind == Kind.IGNORE
 
   val needsSzer :Boolean
     get () = (isData || isEntity) && !isAbstract
 
+  val entityTypeName :String // needed to disambig in template
+    get () = typeName
+
   fun realProps () = props.filter { !it.isDelegate }
-  fun delegateProps () = props.filter { it.isDelegate }
+  fun delegateProps () = directProps.filter { it.isDelegate }
 
   companion object {
     fun kind (meta :ClassMeta) :Kind {
@@ -200,7 +201,7 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaceName
   }
 }
 
-enum class Kind { IGNORE, DATA, KEYED, SINGLETON }
+enum class Kind { IGNORE, DATA, ENTITY }
 
 private fun stripPre (prefix :String, typeName :String) =
   if (typeName.startsWith(prefix)) typeName.substring(prefix.length) else typeName
@@ -256,6 +257,7 @@ private fun toKotlinType (javaType :String) :String = when(javaType) {
   "java.lang.Float"     -> "Float"
   "java.lang.Double"    -> "Double"
   "java.lang.String"    -> "String"
+  "java.lang.Class<?>"  -> "Class"
   "java.lang.Object"    -> "Any"
   else -> {
     if (javaType.endsWith("[]")) toKotlinType(javaType.substring(0, javaType.length-2)) + "Array"
@@ -288,8 +290,7 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
         if (ifcName == "ddb.DData") kind = Kind.DATA
         ifaces.add(ifcName)
       }
-      if (this.superName == "ddb.DEntity.Keyed") kind = Kind.KEYED
-      if (this.superName == "ddb.DEntity.Singleton") kind = Kind.SINGLETON
+      if (this.superName == "ddb.DEntity") kind = Kind.ENTITY
       this.isAbstract = (access and Opcodes.ACC_ABSTRACT != 0)
     }
   }

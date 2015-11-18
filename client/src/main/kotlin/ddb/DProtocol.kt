@@ -16,7 +16,7 @@ abstract class DProtocol (compCount :Int) {
     val id :Short
       get () = _id
 
-    internal fun init (id :Short) { _id = id }
+    internal open fun init (id :Short, pcol :DProtocol) { _id = id }
     private var _id = 0.toShort()
   }
 
@@ -57,8 +57,9 @@ abstract class DProtocol (compCount :Int) {
     uncheckedCast<DService.Factory<S>>(_byType[type]!!)
 
   protected fun register (comp :Component) {
-    comp.init(_nextId.toShort())
-    _byId[_nextId++] = comp
+    val id = _nextId++
+    _byId[id] = comp
     _byType[comp.type] = comp
+    comp.init(id.toShort(), this)
   }
 }

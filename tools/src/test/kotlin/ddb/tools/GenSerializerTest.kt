@@ -32,26 +32,25 @@ class GenSerializerTest {
   class DerivedData (intVal :Int, strVal :String, val boolVal :Boolean, val anyVal :Any) :
     BaseData(intVal, strVal)
 
-  open class TestEntity (id :Long) : DEntity.Keyed(id) {
-    companion object : Meta<TestEntity> {
-      val BoolProp    = TestEntity::boolProp
-      val IntProp     = TestEntity::intProp
-      val StringProp  = TestEntity::stringProp
-      val DataProp    = TestEntity::dataProp
-      val EnumProp    = TestEntity::enumProp
+  open class TestEntity (id :Long) : DEntity(id) {
+    companion object : Meta<TestEntity>() {
+      val BoolProp    = prop(TestEntity::boolProp)
+      val IntProp     = prop(TestEntity::intProp)
+      val StringProp  = prop(TestEntity::stringProp)
+      val DataProp    = prop(TestEntity::dataProp)
+      val EnumProp    = prop(TestEntity::enumProp)
 
       override val entityName = "test"
       override fun create (id :Long) = TestEntity(id)
     }
 
-    var boolProp   :Boolean  by dvalue(false)
-    var intProp    :Int      by dvalue(0)
-    var stringProp :String   by dvalue("")
-    var dataProp   :TestData by dvalue(TestData(1, intArrayOf(1, 2), listOf(1, 2, 3),
-                                                "foo", arrayOf("bar", "baz"), listOf("quuxx"),
-                                                hashMapOf("foo" to 1, "bar" to 2),
-                                                listOf("bippie"), TestEnum.BAR))
-    var enumProp   :TestEnum by dvalue(TestEnum.FOO)
+    var boolProp   :Boolean  by BoolProp.delegate(false)
+    var intProp    :Int      by IntProp.delegate(0)
+    var stringProp :String   by StringProp.delegate("")
+    var dataProp   :TestData by DataProp.delegate(
+      TestData(1, intArrayOf(1, 2), listOf(1, 2, 3), "foo", arrayOf("bar", "baz"), listOf("quuxx"),
+               hashMapOf("foo" to 1, "bar" to 2), listOf("bippie"), TestEnum.BAR))
+    var enumProp   :TestEnum by EnumProp.delegate(TestEnum.FOO)
 
     override fun toString () = "$id $boolProp $intProp $stringProp $dataProp $enumProp"
     override val meta :Meta<TestEntity>
@@ -59,14 +58,14 @@ class GenSerializerTest {
   }
 
   class DerivedEntity (id :Long) : TestEntity(id) {
-    companion object : Meta<DerivedEntity> {
-      val ListProp    = DerivedEntity::listProp
+    companion object : Meta<DerivedEntity>() {
+      val ListProp = listProp(DerivedEntity::listProp)
 
       override val entityName = "derived"
       override fun create (id :Long) = DerivedEntity(id)
     }
 
-    var listProp :List<String> by dvalue(listOf<String>())
+    var listProp :List<String> by ListProp.delegate(listOf())
 
     override fun toString () = "${super.toString()} $listProp"
     override val meta :Meta<DerivedEntity>
@@ -109,34 +108,22 @@ class GenSerializerTest {
       })
 
       register(object : DEntitySerializer<TestEntity>(TestEntity::class.java) {
-        override fun create (buf :ByteBuffer) = TestEntity(buf.getLong())
-        override fun read (pcol :DProtocol, buf :ByteBuffer, obj :TestEntity) {
-          obj.boolProp = buf.getBoolean()
-          obj.intProp = buf.getInt()
-          obj.stringProp = buf.getString()
-          obj.dataProp = buf.getValue(pcol, TestData::class.java)
-          obj.enumProp = buf.getValue(pcol, TestEnum::class.java)
-        }
-        override fun put (pcol :DProtocol, buf :ByteBuffer, obj :TestEntity) {
-          buf.putLong(obj.id)
-          buf.putBoolean(obj.boolProp)
-          buf.putInt(obj.intProp)
-          buf.putString(obj.stringProp)
-          buf.putValue(pcol, TestData::class.java, obj.dataProp)
-          buf.putValue(pcol, TestEnum::class.java, obj.enumProp)
-        }
+        override fun create (id :Long) = TestEntity(id)
+        override val props = listOf(
+          TestEntity.BoolProp,
+          TestEntity.IntProp,
+          TestEntity.StringProp,
+          TestEntity.DataProp,
+          TestEntity.EnumProp
+        )
       })
 
       register(object : DEntitySerializer<DerivedEntity>(DerivedEntity::class.java) {
-        override fun create (buf :ByteBuffer) = DerivedEntity(buf.getLong())
-        override fun read (pcol :DProtocol, buf :ByteBuffer, obj :DerivedEntity) {
-          pcol.entitySerializer(TestEntity::class.java).read(pcol, buf, obj)
-          obj.listProp = buf.getList(pcol, String::class.java)
-        }
-        override fun put (pcol :DProtocol, buf :ByteBuffer, obj :DerivedEntity) {
-          pcol.entitySerializer(TestEntity::class.java).put(pcol, buf, obj)
-          buf.putList(pcol, String::class.java, obj.listProp)
-        }
+        override fun create (id :Long) = DerivedEntity(id)
+        override val parent :Class<out DEntity>? = TestEntity::class.java
+        override val props = listOf(
+          DerivedEntity.ListProp
+        )
       })
     }
   }

@@ -24,8 +24,13 @@ class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey
 
   // from DEntity.Host
   override fun onChange (entity :DEntity, propId :Short, value :Any) {
-    throw UnsupportedOperationException("Cannot change entities directly on client " +
-      "[ent=$entity, pid=$propId, val=$value]")
+    // TODO: we can't freak out here because this is also triggered when applying PropChange from
+    // server; maybe we want to set a flag? or come up with some sneaky way to change the value
+    // locally that circumvents the normal onChange mechanism so that we can still freak out if the
+    // user accidentally tries to change a property on the client?
+
+    // throw UnsupportedOperationException("Cannot change entities directly on client " +
+    //   "[ent=$entity, pid=$propId, val=$value]")
   }
 
   internal fun apply (msg :DMessage.PropChange) {

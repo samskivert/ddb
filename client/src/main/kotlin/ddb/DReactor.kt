@@ -3,8 +3,6 @@
 
 package ddb
 
-import kotlin.reflect.KProperty
-
 abstract class DReactor {
 
     /** Returns true if this reactor has at least one connection. */
@@ -65,13 +63,13 @@ abstract class DReactor {
      * here and force the caller to just cast things, because this is all under the hood where
      * there's zero chance of fucking up and this results in simpler, easier to read code.
      */
-    protected fun notify (p :KProperty<*>, a1 :Any, a2 :Any) {
+    protected fun notify (key :Any, a1 :Any, a2 :Any) {
         var lners :Cons? = null
         synchronized (this) {
             // if we're currently dispatching, defer this notification until we're done
             if (_listeners == DISPATCHING) {
                 _pendingRuns = append(_pendingRuns, object : Runs() {
-                    override fun run () { notify(p, a1, a2) }
+                    override fun run () { notify(key, a1, a2) }
                 })
             } else {
                 lners = _listeners
@@ -85,7 +83,7 @@ abstract class DReactor {
             // perform this dispatch, catching and accumulating any errors
             var cons = lners ; while (cons != null) {
                 try {
-                    cons.notify(p, a1, a2)
+                    cons.notify(key, a1, a2)
                 } catch (ex :RuntimeException) {
                     @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
                     if (exn != null) (exn as java.lang.Throwable).addSuppressed(ex)
@@ -149,7 +147,7 @@ abstract class DReactor {
         }
 
         val DISPATCHING = object : Cons(null) {
-            override fun notify (p :KProperty<*>, a1 :Any, a2: Any) {}
+            override fun notify (key :Any, a1 :Any, a2: Any) {}
         }
     }
 }

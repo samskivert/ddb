@@ -11,15 +11,15 @@ import org.junit.Assert.*
 class DDBTest {
 
   class TestEntity (id :Long) : DEntity(id) {
-    companion object : Meta<TestEntity> {
-      val Name = TestEntity::name
-      val Age  = TestEntity::age
+    companion object : Meta<TestEntity>() {
+      val Name = prop(TestEntity::name)
+      val Age  = prop(TestEntity::age)
       override val entityName = "test"
       override fun create (id :Long) = TestEntity(id)
     }
 
-    var name :String by dvalue("")
-    var age :Int by dvalue(0)
+    var name :String by Name.delegate("")
+    var age :Int     by Age.delegate(0)
 
     override val meta = Companion
   }
@@ -43,7 +43,7 @@ class DDBTest {
       println(msg)
       if (err != null) err.printStackTrace(System.out)
     }
-    override protected fun send (msg :DMessage) {
+    override fun send (msg :DMessage) {
       server.dispatch(msg, session)
     }
   }
@@ -76,7 +76,7 @@ class DDBTest {
     client.openDB("test").
       onSuccess { cddb ->
         println("Got DDB $cddb")
-        val cent = cddb.get(TestEntity, sent.id)
+        val cent = cddb.get<TestEntity>(sent.id)
         cent.onChange(TestEntity.Age) { age, oage ->
           println("Age changed $oage -> $age")
         }

@@ -30,29 +30,15 @@
     {{/isData}}
     {{#isEntity}}
     register(object : DEntitySerializer<{{typeName}}>({{typeName}}::class.java) {
-      override fun create (buf :ByteBuffer) =
-        {{typeName}}({{#isKeyed}}buf.getLong(){{/isKeyed}})
-      override fun read (pcol :DProtocol, buf :ByteBuffer, obj :{{typeName}}) {
-        {{#isEntityChild}}
-        pcol.entitySerializer({{superName}}::class.java).read(pcol, buf, obj)
-        {{/isEntityChild}}
-        {{#delegateProps}}
-        obj.{{propName}} = buf.get{{typeKind}}({{#needsProtocol}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}{{/needsProtocol}})
-        {{/delegateProps}}
-      }
-      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :{{typeName}}) {
-        {{#isEntityChild}}
-        pcol.entitySerializer({{superName}}::class.java).put(pcol, buf, obj)
-        {{/isEntityChild}}
-        {{^isEntityChild}}
-        {{#isKeyed}}
-        buf.putLong(obj.id)
-        {{/isKeyed}}
-        {{/isEntityChild}}
-        {{#delegateProps}}
-        buf.put{{typeKind}}({{#needsProtocol}}pcol{{#paramTypes}}, {{.}}::class.java{{/paramTypes}}, {{/needsProtocol}}obj.{{propName}})
-        {{/delegateProps}}
-      }
+      override fun create (id :Long) = {{typeName}}(id)
+      {{#isEntityChild}}
+      override val parent = {{superName}}::class.java
+      {{/isEntityChild}}
+      override val props = listOf(
+      {{#delegateProps}}
+        {{entityTypeName}}.{{metaName}}{{^-last}},{{/-last}}
+      {{/delegateProps}}
+      )
     })
     {{/isEntity}}
     {{/hasCustom}}

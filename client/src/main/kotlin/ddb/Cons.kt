@@ -4,7 +4,6 @@
 package ddb
 
 import react.Connection
-import kotlin.reflect.KProperty
 
 /**
  * Implements {@link Connection} and a linked-list style listener list for {@link Reactor}s.
@@ -22,7 +21,7 @@ abstract class Cons (owner :DReactor?): Connection()  {
     val oneShot :Boolean
         get () = _oneShot
 
-    abstract fun notify (p :KProperty<*>, a1 :Any, a2 :Any) :Unit
+    abstract fun notify (key :Any, a1 :Any, a2 :Any) :Unit
 
     override fun close () {
         // multiple disconnects are OK, we just NOOP after the first one

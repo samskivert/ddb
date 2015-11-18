@@ -33,20 +33,6 @@ class TestProtocol : DProtocol(8) {
         buf.putString(obj.dbKey)
       }
     })
-    register(object : DSerializer<ddb.DMessage.PropChange>(ddb.DMessage.PropChange::class.java) {
-      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.PropChange(
-        buf.getInt(),
-        buf.getInt(),
-        buf.getInt(),
-        buf.getAny(pcol)
-      )
-      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.PropChange) {
-        buf.putInt(obj.dbId)
-        buf.putInt(obj.entId)
-        buf.putInt(obj.propId)
-        buf.putAny(pcol, obj.value)
-      }
-    })
     register(object : DSerializer<ddb.DMessage.SubFailedRsp>(ddb.DMessage.SubFailedRsp::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.SubFailedRsp(
         buf.getString(),
@@ -55,6 +41,20 @@ class TestProtocol : DProtocol(8) {
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.SubFailedRsp) {
         buf.putString(obj.dbKey)
         buf.putString(obj.cause)
+      }
+    })
+    register(object : DSerializer<ddb.DMessage.PropChange>(ddb.DMessage.PropChange::class.java) {
+      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.PropChange(
+        buf.getInt(),
+        buf.getLong(),
+        buf.getShort(),
+        buf.getAny(pcol)
+      )
+      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.PropChange) {
+        buf.putInt(obj.dbId)
+        buf.putLong(obj.entId)
+        buf.putShort(obj.propId)
+        buf.putAny(pcol, obj.value)
       }
     })
     register(object : DSerializer<ddb.DMessage.CalledRsp>(ddb.DMessage.CalledRsp::class.java) {
@@ -68,18 +68,25 @@ class TestProtocol : DProtocol(8) {
       }
     })
     register(object : DEntitySerializer<ddb.DDBTest.TestEntity>(ddb.DDBTest.TestEntity::class.java) {
-      override fun create (buf :ByteBuffer) =
-        ddb.DDBTest.TestEntity(buf.getLong())
-      override fun read (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DDBTest.TestEntity) {
-        obj.name = buf.getString()
-        obj.age = buf.getInt()
-      }
-      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DDBTest.TestEntity) {
-        buf.putLong(obj.id)
-        buf.putString(obj.name)
-        buf.putInt(obj.age)
+      override fun create (id :Long) = ddb.DDBTest.TestEntity(id)
+      override val props = listOf(
+        ddb.DDBTest.TestEntity.Name,
+        ddb.DDBTest.TestEntity.Age
+      )
+    })
+    register(object : DSerializer<ddb.DMessage.SubscribedRsp>(ddb.DMessage.SubscribedRsp::class.java) {
+      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.SubscribedRsp(
+        buf.getString(),
+        buf.getInt(),
+        buf.getCollection(pcol, ddb.DEntity::class.java),
+        buf.getCollection(pcol, Class::class.java)
+      )
+      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.SubscribedRsp) {
+        buf.putString(obj.dbKey)
+        buf.putInt(obj.dbId)
+        buf.putCollection(pcol, ddb.DEntity::class.java, obj.entities)
+        buf.putCollection(pcol, Class::class.java, obj.services)
       }
     })
-    register(ddb.DMessage.SubscribedRsp.serializer)
   }
 }

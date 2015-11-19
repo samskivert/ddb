@@ -51,7 +51,7 @@ abstract class DEntity (val id :Long) : DReactor() {
           (thisRef!! as DEntity).emitChange(prop, oldval, newval)
         }
       }
-      fun delegate (initVal :T) = Delegate<T>(this, initVal)
+      operator fun invoke (initVal :T) = Delegate<T>(this, initVal)
 
       abstract fun read (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) :Unit
       abstract fun write (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) :Unit

@@ -44,13 +44,13 @@ class GenSerializerTest {
       override fun create (id :Long) = TestEntity(id)
     }
 
-    var boolProp   :Boolean  by BoolProp.delegate(false)
-    var intProp    :Int      by IntProp.delegate(0)
-    var stringProp :String   by StringProp.delegate("")
-    var dataProp   :TestData by DataProp.delegate(
+    var boolProp   :Boolean  by BoolProp(false)
+    var intProp    :Int      by IntProp(0)
+    var stringProp :String   by StringProp("")
+    var dataProp   :TestData by DataProp(
       TestData(1, intArrayOf(1, 2), listOf(1, 2, 3), "foo", arrayOf("bar", "baz"), listOf("quuxx"),
                hashMapOf("foo" to 1, "bar" to 2), listOf("bippie"), TestEnum.BAR))
-    var enumProp   :TestEnum by EnumProp.delegate(TestEnum.FOO)
+    var enumProp   :TestEnum by EnumProp(TestEnum.FOO)
 
     override fun toString () = "$id $boolProp $intProp $stringProp $dataProp $enumProp"
     override val meta :Meta<TestEntity>
@@ -65,7 +65,7 @@ class GenSerializerTest {
       override fun create (id :Long) = DerivedEntity(id)
     }
 
-    var listProp :List<String> by ListProp.delegate(listOf())
+    var listProp :List<String> by ListProp(listOf())
 
     override fun toString () = "${super.toString()} $listProp"
     override val meta :Meta<DerivedEntity>

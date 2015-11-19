@@ -18,8 +18,8 @@ class DDBTest {
       override fun create (id :Long) = TestEntity(id)
     }
 
-    var name :String by Name.delegate("")
-    var age :Int     by Age.delegate(0)
+    var name :String by Name("")
+    var age :Int     by Age(0)
 
     override val meta = Companion
   }

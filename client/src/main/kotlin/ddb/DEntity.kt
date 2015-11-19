@@ -36,7 +36,11 @@ abstract class DEntity (val id :Long) : DReactor() {
     inline fun <reified T : Any> listProp (kprop :KMutableProperty1<*,List<T>>) =
       ListProp<T>(kprop, T::class.java)
 
-    /** A delegate for a [DEntity] property. Handles change notifications and serialization. */
+    /** Returns a delegate for a [DEntity] property of list type. */
+    inline fun <reified K : Any, reified V : Any> mapProp (kprop :KMutableProperty1<*,Map<K,V>>) =
+      MapProp<K,V>(kprop, K::class.java, V::class.java)
+
+    /** Metadata for a [DEntity] property. Handles change notifications and serialization. */
     abstract class Prop<T> (rawProp :KMutableProperty1<*,T>) {
       val kprop = uncheckedCast<KMutableProperty1<DEntity,T>>(rawProp)
       var id :Short = 0.toShort() // assigned during DSerializer init
@@ -57,6 +61,7 @@ abstract class DEntity (val id :Long) : DReactor() {
       abstract fun write (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) :Unit
     }
 
+    /** Metadata for a simple value property. */
     class ValueProp<T> (kprop :KMutableProperty1<*,T>, val vtype :Class<T>) : Prop<T>(kprop) {
       override fun read (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
         kprop.set(entity, pcol.serializer(vtype).get(pcol, buf))
@@ -66,6 +71,7 @@ abstract class DEntity (val id :Long) : DReactor() {
       }
     }
 
+    /** Metadata for a list property. */
     class ListProp<T> (kprop :KMutableProperty1<*,List<T>>,
                        val etype :Class<T>) : Prop<List<T>>(kprop) {
 
@@ -74,6 +80,18 @@ abstract class DEntity (val id :Long) : DReactor() {
       }
       override fun write (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
         buf.putList(pcol, etype, kprop.get(entity))
+      }
+    }
+
+    /** Metadata for a map property. */
+    class MapProp<K,V> (kprop :KMutableProperty1<*,Map<K,V>>,
+                        val ktype :Class<K>, val vtype :Class<V>) : Prop<Map<K,V>>(kprop) {
+
+      override fun read (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
+        kprop.set(entity, buf.getMap(pcol, ktype, vtype))
+      }
+      override fun write (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
+        buf.putMap(pcol, ktype, vtype, kprop.get(entity))
       }
     }
   }

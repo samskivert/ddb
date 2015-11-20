@@ -6,7 +6,7 @@ package ddb
 /** Extends [DDB] with operations that are only applicable on the source database. The source
   * database is maintained on the server, whereas clients have proxies to that source.
   */
-abstract class SourceDB (key :String, id :Int) : BaseDB(key, id), DService.Host, DEntity.Host {
+abstract class SourceDB (key :String, id :Int) : DDB(key, id), DService.Host, DEntity.Host {
 
   /** Registers `service` as the provider of `S` in this ddb. */
   abstract fun <S : DService> register (sclass :Class<S>, service :S) :Unit
@@ -32,4 +32,7 @@ abstract class SourceDB (key :String, id :Int) : BaseDB(key, id), DService.Host,
 
   /** Destroys this database. */
   abstract fun destroy () :Unit
+
+  override fun <S : DService> service (sclass :Class<S>) :S =
+    throw UnsupportedOperationException("Use service(sclass, recv) on the server.")
 }

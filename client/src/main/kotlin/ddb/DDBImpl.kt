@@ -6,6 +6,7 @@ package ddb
 import java.util.HashMap
 import react.SignalView
 import react.Try
+import ddb.util.*
 
 class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey, rsp.dbId),
   DService.Host, DEntity.Host {

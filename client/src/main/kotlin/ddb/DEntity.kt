@@ -7,6 +7,7 @@ import java.nio.ByteBuffer
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KProperty
 import react.*
+import ddb.util.*
 
 /** An entity that is distributed between client and server.
   *

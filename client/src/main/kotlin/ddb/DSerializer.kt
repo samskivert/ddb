@@ -6,6 +6,7 @@ package ddb
 import java.nio.ByteBuffer
 import java.util.ArrayList
 import java.util.HashMap
+import ddb.util.*
 
 abstract class DSerializer<T> (type :Class<T>) : DProtocol.Component(type) {
 

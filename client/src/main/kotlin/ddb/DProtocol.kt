@@ -5,6 +5,7 @@ package ddb
 
 import java.nio.ByteBuffer
 import java.util.HashMap
+import ddb.util.*
 
 abstract class DProtocol (compCount :Int) {
 

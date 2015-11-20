@@ -8,6 +8,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.ArrayList
 import java.util.HashMap
+import ddb.util.*
 
 fun ByteBuffer.getBoolean () :Boolean = get() > 0
 fun ByteBuffer.putBoolean (v :Boolean) { put(if (v) 1.toByte() else 0.toByte()) }

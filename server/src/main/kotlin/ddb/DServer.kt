@@ -6,6 +6,7 @@ package ddb
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicInteger
+import ddb.util.*
 
 /**
  * Brings together all of the moving parts needed to coordinate a [DDB] server.
@@ -50,7 +51,7 @@ abstract class DServer (val exec :Executor) {
   }}
 
   private val _nextServiceId = AtomicInteger(1)
-  private val _dbsByKey = Util.cacheMap<String,SourceDBImpl> { key ->
+  private val _dbsByKey = cacheMap<String,SourceDBImpl> { key ->
     storage.openDB(key, _nextServiceId.getAndIncrement()).apply {
       _dbsById.put(id, this)
     }

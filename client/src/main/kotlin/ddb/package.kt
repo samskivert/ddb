@@ -4,10 +4,10 @@
 package ddb
 
 @Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
-inline fun <T> uncheckedCast (value :Any) :T = value as T
+internal inline fun <T> uncheckedCast (value :Any) :T = value as T
 
 @Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
-inline fun <T : Any?> uncheckedNullCast (value :Any?) :T = value as T
+internal inline fun <T : Any?> uncheckedNullCast (value :Any?) :T = value as T
 
 /** Calls `f` with `this` iff `this` is non-null. */
-inline fun <T : Any> T?.ifExists (f: (T) -> Unit) :Unit { if (this != null) f(this) }
+internal inline fun <T : Any> T?.ifExists (f: (T) -> Unit) :Unit { if (this != null) f(this) }

@@ -34,7 +34,7 @@
       {{#isEntityChild}}
       override val parent = {{superName}}::class.java
       {{/isEntityChild}}
-      override val props = listOf(
+      override val props = listOf<DEntity.Meta.Prop<*>>(
       {{#delegateProps}}
         {{entityTypeName}}.{{metaName}}{{^-last}},{{/-last}}
       {{/delegateProps}}

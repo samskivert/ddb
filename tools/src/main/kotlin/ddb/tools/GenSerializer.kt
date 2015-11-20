@@ -111,6 +111,34 @@ fun extractMeta (metas :HashMap<String,ClassMeta>, name :String, reader :ClassRe
   }
 }
 
+fun metaName (name :String) :String {
+  val propFmt = System.getProperty("ddb.prop_format", "%C")
+  val out = StringBuilder()
+  var isCmd = false
+  for (char in propFmt) {
+    if (isCmd) {
+      when (char) {
+        'C' -> out.append(name[0].toUpperCase()).append(name.substring(1))
+        'U' -> {
+          var pastFirst = false
+          for (nchar in name) {
+            if (!nchar.isUpperCase()) out.append(nchar.toUpperCase())
+            else {
+              if (pastFirst) out.append('_')
+              out.append(nchar)
+            }
+            pastFirst = true
+          }
+        }
+      }
+      isCmd = false
+    }
+    else if (char == '%') isCmd = true
+    else out.append(char)
+  }
+  return out.toString()
+}
+
 class PropMeta (val propName :String, val typeName :String, val isDelegate :Boolean,
                 private val metas :Map<String,ClassMeta>) {
 
@@ -129,7 +157,7 @@ class PropMeta (val propName :String, val typeName :String, val isDelegate :Bool
     get () = metas[typeName]?.isEnum ?: false
 
   val metaName :String
-    get () = propName[0].toUpperCase() + propName.substring(1)
+    get () = metaName(propName)
 
   fun typeKind () :String = when(rawType) {
     "java.util.List"       -> "List"

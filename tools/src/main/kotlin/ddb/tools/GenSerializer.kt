@@ -8,6 +8,7 @@ import com.samskivert.mustache.Template
 import java.io.*
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
+import java.util.ArrayList
 import java.util.HashMap
 import java.util.jar.JarFile
 import org.objectweb.asm.*
@@ -72,11 +73,30 @@ fun extractMetas (sources :List<Path>) :List<ClassMeta> {
   // else println("NOSZER: ${kind(metas, meta)} ${meta.typeName}")
 
   // for (meta in szerMetas) {
+  //   println("${meta.kind} ${meta.typeName}")
+  //   for (prop in meta.props) println("  $prop")
+  // }
+
+  // finally "topologically sort" the metas so that parents always precede children in the list
+  val sortedMetas = ArrayList<ClassMeta>(szerMetas.size)
+  val seen = hashSetOf<String>()
+  while (!szerMetas.isEmpty()) {
+    val iter = szerMetas.iterator() ; while (iter.hasNext()) {
+      val meta = iter.next()
+      if (!meta.isEntity || !meta.isEntityChild || seen.contains(meta.superName)) {
+        sortedMetas.add(meta)
+        seen.add(meta.typeName)
+        iter.remove()
+      }
+    }
+  }
+
+  // for (meta in szerMetas) {
   //   println("${kind(metas, meta)} ${meta.typeName}")
   //   for (prop in meta.props) println("  $prop")
   // }
 
-  return szerMetas
+  return sortedMetas
 }
 
 fun extractMetaFromJar (metas :HashMap<String,ClassMeta>, jarPath :Path) {

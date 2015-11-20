@@ -151,7 +151,7 @@ class PropMeta (val propName :String, val typeName :String, val isDelegate :Bool
     get () = rawType(typeName)
 
   val paramTypes :List<String>
-    get () = paramTypes(typeName)
+    get () = if (typeKind() == "Value") listOf(typeName) else paramTypes(typeName)
 
   val isEnum :Boolean
     get () = metas[typeName]?.isEnum ?: false

@@ -23,10 +23,10 @@ abstract class DSerializer<T> (type :Class<T>) : DProtocol.Component(type) {
 
 abstract class DEntitySerializer<T : DEntity> (type :Class<T>) : DSerializer<T>(type) {
 
+  open fun create (id :Long) :T = throw UnsupportedOperationException("Can't create abstract $type")
   open val parent :Class<out DEntity>?
     get () = null
   abstract val props :List<DEntity.Meta.Prop<*>>
-  abstract fun create (id :Long) :T
 
   fun apply (ent :T, propId :Short, value :Any) {
     uncheckedCast<DEntity.Meta.Prop<Any>>(_allProps[propId.toInt()]).kprop.set(ent, value)

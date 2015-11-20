@@ -5,7 +5,7 @@ package ddb
 
 import java.nio.ByteBuffer
 
-class TestProtocol : DProtocol(7) {
+class TestProtocol : DProtocol(8) {
   init {
     register(object : DSerializer<ddb.DMessage.FailedRsp>(ddb.DMessage.FailedRsp::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.FailedRsp(
@@ -33,6 +33,16 @@ class TestProtocol : DProtocol(7) {
         buf.putString(obj.dbKey)
       }
     })
+    register(object : DSerializer<ddb.DMessage.SubFailedRsp>(ddb.DMessage.SubFailedRsp::class.java) {
+      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.SubFailedRsp(
+        buf.getString(),
+        buf.getString()
+      )
+      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.SubFailedRsp) {
+        buf.putString(obj.dbKey)
+        buf.putString(obj.cause)
+      }
+    })
     register(object : DSerializer<ddb.DMessage.PropChange>(ddb.DMessage.PropChange::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.PropChange(
         buf.getInt(),
@@ -47,16 +57,6 @@ class TestProtocol : DProtocol(7) {
         buf.putAny(pcol, obj.value)
       }
     })
-    register(object : DSerializer<ddb.DMessage.SubFailedRsp>(ddb.DMessage.SubFailedRsp::class.java) {
-      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.SubFailedRsp(
-        buf.getString(),
-        buf.getString()
-      )
-      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.SubFailedRsp) {
-        buf.putString(obj.dbKey)
-        buf.putString(obj.cause)
-      }
-    })
     register(object : DSerializer<ddb.DMessage.CalledRsp>(ddb.DMessage.CalledRsp::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.CalledRsp(
         buf.getInt(),
@@ -66,6 +66,13 @@ class TestProtocol : DProtocol(7) {
         buf.putInt(obj.reqId)
         buf.putAny(pcol, obj.value)
       }
+    })
+    register(object : DEntitySerializer<ddb.DDBTest.TestEntity>(ddb.DDBTest.TestEntity::class.java) {
+      override fun create (id :Long) = ddb.DDBTest.TestEntity(id)
+      override val props = listOf<DEntity.Meta.Prop<*>>(
+        ddb.DDBTest.TestEntity.Name,
+        ddb.DDBTest.TestEntity.Age
+      )
     })
     register(object : DSerializer<ddb.DMessage.SubscribedRsp>(ddb.DMessage.SubscribedRsp::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.SubscribedRsp(

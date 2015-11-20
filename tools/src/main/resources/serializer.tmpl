@@ -30,7 +30,9 @@
     {{/isData}}
     {{#isEntity}}
     register(object : DEntitySerializer<{{typeName}}>({{typeName}}::class.java) {
+      {{^isAbstract}}
       override fun create (id :Long) = {{typeName}}(id)
+      {{/isAbstract}}
       {{#isEntityChild}}
       override val parent = {{superName}}::class.java
       {{/isEntityChild}}

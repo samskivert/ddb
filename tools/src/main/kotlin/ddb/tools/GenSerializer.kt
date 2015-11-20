@@ -203,7 +203,7 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaceName
     get () = directKind == Kind.IGNORE
 
   val needsSzer :Boolean
-    get () = (isData || isEntity) && !isAbstract
+    get () = ((isData && !isAbstract) || isEntity)
 
   val entityTypeName :String // needed to disambig in template
     get () = typeName

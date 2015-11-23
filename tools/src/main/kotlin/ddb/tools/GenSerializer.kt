@@ -6,6 +6,7 @@ package ddb.tools
 import com.samskivert.mustache.Mustache
 import com.samskivert.mustache.Template
 import java.io.*
+import java.nio.CharBuffer
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.ArrayList
@@ -159,19 +160,29 @@ fun metaName (name :String) :String {
   return out.toString()
 }
 
-class PropMeta (val propName :String, val typeName :String, val isDelegate :Boolean,
+enum class Kind { IGNORE, DATA, ENTITY, SERVICE }
+
+class PropMeta (val propName :String, val type :TypeN, val isDelegate :Boolean,
                 private val metas :Map<String,ClassMeta>) {
+
+  val typeName = type.toKotlin()
 
   val isBuiltIn :Boolean
     get () = !typeName.contains('.')
   val needsProtocol :Boolean
     get () = !isBuiltIn || typeName == "Any"
 
-  val rawType :String
-    get () = rawType(typeName)
+  val rawType :String = type.rawType()
 
-  val paramTypes :List<String>
-    get () = if (typeKind() == "Value") listOf(typeName) else paramTypes(typeName)
+  val params :List<TypeN>
+    get () = when (type) {
+      is NamedTypeN ->
+        if (typeKind() == "Value") listOf(type)
+        else type.params
+      else -> listOf()
+    }
+
+  fun paramTypeTokens () = params.map { "${it.rawType()}::class.java" }
 
   val isEnum :Boolean
     get () = metas[typeName]?.isEnum ?: false
@@ -179,7 +190,7 @@ class PropMeta (val propName :String, val typeName :String, val isDelegate :Bool
   val metaName :String
     get () = metaName(propName)
 
-  fun typeKind () :String = when(rawType) {
+  fun typeKind () :String = when (rawType) {
     "java.util.List"       -> "List"
     "java.util.Set"        -> "Set"
     "java.util.Map"        -> "Map"
@@ -249,53 +260,116 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaceName
   }
 }
 
-enum class Kind { IGNORE, DATA, ENTITY }
+enum class Bound (val token :String) {
+  EXTENDS("+"), SUPER("-")
+}
+abstract class TypeN {
+  open fun toBound () :TypeN = this
+  open fun rawType () :String = toString()
+  abstract fun toKotlin () :String
+  override fun toString () = toKotlin()
+}
+class PrimTypeN (val name :String) : TypeN() {
+  override fun toKotlin () = name
+}
+class ArrayTypeN (val comp :TypeN) : TypeN() {
+  override fun toKotlin () = if (comp is PrimTypeN) "${comp}Array" else "Array<$comp>"
+}
+class NamedTypeN (val name :String, val params :List<TypeN>) : TypeN() {
+  override fun rawType () = toKotlinType(name)
+  override fun toKotlin () = rawType() +
+    if (params.isEmpty()) "" else params.joinToString(",", "<", ">")
+}
+class TypeParamTypeN (val name :String) : TypeN() {
+  override fun toKotlin () = name
+}
+class BoundTypeN (val bound :Bound, val type :TypeN) : TypeN() {
+  override fun rawType () = type.rawType()
+  override fun toKotlin () = "${bound.token}$type"
+  override fun toBound () = type
+}
 
-private fun stripPre (prefix :String, typeName :String) =
-  if (typeName.startsWith(prefix)) typeName.substring(prefix.length) else typeName
+// NOTE
+// Kotlin as of 1.0-M15 translates get(index) into charAt(index) which is NOT CORRECT; so don't use
+// get(index) unless you want to blow an hour trying to figure out what the fuck you can't even
+fun CharBuffer.peek () :Char = charAt(0)
+
+// parses a Java type signature into a tree
+fun parseType (sig :CharBuffer) :TypeN = when (sig.get()) {
+  'V' -> PrimTypeN("Unit")
+  'Z' -> PrimTypeN("Boolean")
+  'B' -> PrimTypeN("Byte")
+  'S' -> PrimTypeN("Short")
+  'C' -> PrimTypeN("Char")
+  'I' -> PrimTypeN("Int")
+  'J' -> PrimTypeN("Long")
+  'F' -> PrimTypeN("Float")
+  'D' -> PrimTypeN("Double")
+  'L' -> {
+    val name = StringBuilder()
+    var haveParams = false
+    while (true) {
+      val c = sig.get()
+      if (c == ';') break
+      if (c == '<') {
+        haveParams = true
+        break
+      }
+      if (c == '/') name.append('.')
+      else name.append(c)
+    }
+    val params = arrayListOf<TypeN>()
+    if (haveParams) {
+      while (sig.peek() != '>') params.add(parseType(sig))
+      sig.get() // skip the '>'
+      if (sig.get() != ';') {
+        val pos = sig.position()-1
+        throw IllegalArgumentException("Expected ; at $pos in $sig")
+      }
+    }
+    NamedTypeN(name.toString(), params)
+  }
+  'T' -> {
+    val name = StringBuilder()
+    while (true) {
+      val c = sig.get()
+      if (c == ';') break
+      else name.append(c)
+    }
+    TypeParamTypeN(name.toString())
+  }
+  '+' -> BoundTypeN(Bound.EXTENDS, parseType(sig))
+  '-' -> BoundTypeN(Bound.SUPER, parseType(sig))
+  '[' -> ArrayTypeN(parseType(sig))
+  '*' -> NamedTypeN("java.lang.Object", listOf())
+  else -> {
+    val pos = sig.position()-1 ; sig.rewind() ; val errc = sig.get(pos)
+    throw IllegalArgumentException("Unexpected sig token '$errc' at $pos in $sig")
+  }
+}
+
+// parses bytecode method type signature '(T*)R' into a list of trees (last elem is return type)
+fun parseMethod (sig :CharBuffer) :List<TypeN> {
+  val oc = sig.get()
+  if (oc != '(') throw IllegalArgumentException(
+    "Buffer does not contain method signature? Open: $oc")
+
+  val types = arrayListOf<TypeN>()
+  var nc = sig.peek()
+  while (nc != ')') {
+    types.add(parseType(sig))
+    nc = sig.peek()
+  }
+  sig.get() // skip the closing ')'
+  types.add(parseType(sig))
+  return types
+}
+
 private fun stripPost (typeName :String, postfix :String) =
   if (typeName.endsWith(postfix)) typeName.substring(0, typeName.length-postfix.length)
   else typeName
 
-private fun rawType (typeName :String) :String {
-  val braceIdx = typeName.indexOf('<')
-  return if (braceIdx == -1) typeName else typeName.substring(0, braceIdx)
-}
-private fun paramTypes (typeName :String) :List<String> {
-  fun stripBounds (name :String) :String = stripPre("? super ", stripPre("? extends ", name))
-  val braceIdx = typeName.indexOf('<')
-  return if (braceIdx == -1) listOf()
-  else splitParams(typeName.substring(braceIdx+1, typeName.length-1)).map {
-    pt -> toKotlinType(stripBounds(pt.trim())) }
-}
-
-private fun splitParams (params :String) :List<String> {
-  val split = arrayListOf<String>()
-  var depth = 0 ; var start = 0
-  var ii = 0 ; while (ii < params.length) {
-    when(params[ii]) {
-      '<' -> depth += 1
-      '>' -> depth -= 1
-      ',' -> if (depth == 0) {
-        split += params.substring(start, ii).trim()
-        start = ii+1
-      }
-    }
-    ii += 1
-  }
-  if (ii > start) split += params.substring(start, ii).trim()
-  return split
-}
-
-private fun toKotlinType (javaType :String) :String = when(javaType) {
-  "boolean" -> "Boolean"
-  "byte"    -> "Byte"
-  "char"    -> "Char"
-  "short"   -> "Short"
-  "int"     -> "Int"
-  "long"    -> "Long"
-  "float"   -> "Float"
-  "double"  -> "Double"
+private fun toKotlinType (javaType :String) :String = when (javaType) {
   "java.lang.Boolean"   -> "Boolean"
   "java.lang.Byte"      -> "Byte"
   "java.lang.Character" -> "Char"
@@ -305,12 +379,9 @@ private fun toKotlinType (javaType :String) :String = when(javaType) {
   "java.lang.Float"     -> "Float"
   "java.lang.Double"    -> "Double"
   "java.lang.String"    -> "String"
-  "java.lang.Class<?>"  -> "Class"
+  "java.lang.Class"     -> "Class"
   "java.lang.Object"    -> "Any"
-  else -> {
-    if (javaType.endsWith("[]")) toKotlinType(javaType.substring(0, javaType.length-2)) + "Array"
-    else javaType
-  }
+  else -> javaType
 }
 
 class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5) {
@@ -336,6 +407,7 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
       for (ifc in ifcs) {
         val ifcName = jvmToClass(ifc)
         if (ifcName == "ddb.DData") kind = Kind.DATA
+        if (ifcName == "ddb.DService" && access and Opcodes.ACC_INTERFACE != 0) kind = Kind.SERVICE
         ifaces.add(ifcName)
       }
       if (this.superName == "ddb.DEntity") kind = Kind.ENTITY
@@ -348,20 +420,29 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
     if (ignore) return null
     if (access and Opcodes.ACC_STATIC == 0) {
       val tdesc = if (sig != null) sig else desc
-      val typeName = jvmToType(tdesc, access)
-      // println("$name $sig / $desc -> $typeName")
+      val type = parseType(CharBuffer.wrap(tdesc))
+      // println("$name $sig / $desc -> $type")
 
       // if this is a delegated prop, we have something like: foo$delegate :Delegate<actualtype>
       // so we clean all that up here before stuffing it into a PropMeta
-      if (name.endsWith("\$delegate")) {
-        props += PropMeta(stripPost(name, "\$delegate"), paramTypes(typeName)[0], true, metas)
+      if (name.endsWith("\$delegate") && type is NamedTypeN) {
+        props += PropMeta(stripPost(name, "\$delegate"), type.params[0], true, metas)
       } else {
         // println("$tdesc -> $typeName -> ${toKotlinType(typeName)}")
-        props += PropMeta(name, toKotlinType(typeName), false, metas)
+        props += PropMeta(name, type, false, metas)
       }
     } else {
       if (name == "INSTANCE$") isObject = true
       else if (name == "serializer") hasCustom = true
+    }
+    return null
+  }
+
+  override fun visitMethod (access :Int, name :String, desc :String, sig :String?,
+                            exns :Array<String>?) :MethodVisitor? {
+    if (kind == Kind.SERVICE) {
+      println("Service method : $name / $sig")
+      println(parseMethod(CharBuffer.wrap(sig)))
     }
     return null
   }
@@ -400,16 +481,4 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
   }
 
   private fun jvmToClass (typeName :String) = typeName.replace('/', '.').replace('$', '.')
-
-  private fun jvmToType (sig :String, access :Int) :String {
-    val viz = TraceSignatureVisitor(access)
-    SignatureReader(sig).accept(viz)
-    val decl = viz.getDeclaration()
-    if (decl == "") return "java.lang.Object" // special hackery!
-    // TraceSignatureVisitor calls visitSuperclass for some reason which tacks an ' extends ' onto
-    // the start of everything, fuck knows why
-    val cruft = " extends "
-    val uncrufted = if (decl.startsWith(cruft)) decl.substring(cruft.length) else decl
-    return uncrufted.replace('$', '.')
-  }
 }

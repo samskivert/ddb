@@ -11,6 +11,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 import ddb.*
+import react.RFuture
 
 class GenSerializerTest {
 
@@ -70,6 +71,13 @@ class GenSerializerTest {
     override fun toString () = "${super.toString()} $listProp"
     override val meta :Meta<DerivedEntity>
       get () = Companion
+  }
+
+  interface TestService : DService {
+    // sig: (ILjava/lang/String;)Lreact/RFuture<Ljava/lang/Boolean;>;
+    fun isSocrates (age :Int, name :String) :RFuture<Boolean>
+    // sig: (Ljava/util/List<+Ljava/lang/String;>;[I)Lreact/RFuture<Ljava/util/List<+Ljava/lang/String;>;>;
+    fun mungeWords (words :List<String>, mungeCoeffs :IntArray) :RFuture<List<String>>
   }
 
   // some hand coded serializers to give me an idea of what I want to generate

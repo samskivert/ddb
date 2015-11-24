@@ -17,12 +17,12 @@
     register(object : DSerializer<{{typeName}}>({{typeName}}::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = {{typeName}}{{^isObject}}(
         {{#realProps}}
-        buf.get{{typeKind}}({{#needsProtocol}}pcol{{#paramTypeTokens}}, {{.}}{{/paramTypeTokens}}{{/needsProtocol}}){{^-last}},{{/-last}}
+        {{getter}}{{^-last}},{{/-last}}
         {{/realProps}}
       ){{/isObject}}
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :{{typeName}}) {
         {{#realProps}}
-        buf.put{{typeKind}}({{#needsProtocol}}pcol{{#paramTypeTokens}}, {{.}}{{/paramTypeTokens}}, {{/needsProtocol}}obj.{{propName}})
+        {{setter}}
         {{/realProps}}
       }
     })

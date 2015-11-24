@@ -166,44 +166,25 @@ class PropMeta (val propName :String, val type :TypeN, val isDelegate :Boolean,
                 private val metas :Map<String,ClassMeta>) {
 
   val typeName = type.toKotlin()
-
-  val isBuiltIn :Boolean
-    get () = !typeName.contains('.')
-  val needsProtocol :Boolean
-    get () = !isBuiltIn || typeName == "Any"
-
-  val rawType :String = type.rawType()
-
-  val params :List<TypeN>
-    get () = when (type) {
-      is NamedTypeN ->
-        if (typeKind() == "Value") listOf(type)
-        else type.params
-      else -> listOf()
-    }
-
-  fun paramTypeTokens () = params.map { "${it.rawType()}::class.java" }
-
   val isEnum :Boolean
     get () = metas[typeName]?.isEnum ?: false
-
   val metaName :String
     get () = metaName(propName)
 
-  fun typeKind () :String = when (rawType) {
-    "java.util.List"       -> "List"
-    "java.util.Set"        -> "Set"
-    "java.util.Map"        -> "Map"
-    "java.util.Collection" -> "Collection"
-    "java.util.String"     -> "String"
-    else                   -> if (isBuiltIn) typeName else "Value"
-  }
+  fun getter () :String = type.getter()
+  fun setter () :String = type.setter(propName)
 
   override fun toString () = "$propName :$typeName"
 }
 
+class MethodMeta (val methName :String, types :List<TypeN>) {
+  val returnType = types.last()
+  val argTypes = types.subList(0, types.size-1)
+}
+
 data class ClassMeta (val typeName :String, val superName :String, val ifaceNames :List<String>,
-                      val directProps :List<PropMeta>, val directKind :Kind,
+                      val directKind :Kind, val directProps :List<PropMeta>,
+                      val methods :List<MethodMeta>,
                       val isAbstract :Boolean, val isObject :Boolean, val hasCustom :Boolean) {
 
   var parent :ClassMeta? = null
@@ -266,25 +247,57 @@ enum class Bound (val token :String) {
 abstract class TypeN {
   open fun toBound () :TypeN = this
   open fun rawType () :String = toString()
+  open fun kind () :String = toKotlin()
+
+  open fun getter () :String = "buf.get${kind()}()"
+  open fun setter (name :String) :String = "buf.put${kind()}(obj.$name)"
+
   abstract fun toKotlin () :String
   override fun toString () = toKotlin()
 }
+
 class PrimTypeN (val name :String) : TypeN() {
   override fun toKotlin () = name
 }
+
 class ArrayTypeN (val comp :TypeN) : TypeN() {
   override fun toKotlin () = if (comp is PrimTypeN) "${comp}Array" else "Array<$comp>"
+  // TODO: have special kind for non-primitive type arrays and corresponding array get/put
+  // methods in BufferExt (i.e. getArray(Foo::class.java))?
 }
+
 class NamedTypeN (val name :String, val params :List<TypeN>) : TypeN() {
   override fun rawType () = toKotlinType(name)
+
+  override fun kind () = when (name) {
+    "java.util.List"       -> "List"
+    "java.util.Set"        -> "Set"
+    "java.util.Map"        -> "Map"
+    "java.util.Collection" -> "Collection"
+    "java.lang.Object"     -> "Any"
+    else                   -> "Value"
+  }
+
+  override fun getter () = "buf.get${kind()}(pcol${paramArgs()})"
+  override fun setter (name :String) = "buf.put${kind()}(pcol${paramArgs()}, obj.$name)"
+
   override fun toKotlin () = rawType() +
     if (params.isEmpty()) "" else params.joinToString(",", "<", ">")
+
+  private fun paramArgs () :String {
+    if (name == "java.lang.Object") return "" // getAny/putAny take no args
+    val ptypes = if (params.isEmpty()) listOf(this) else params
+    return ptypes.map { "${it.rawType()}::class.java" }.joinToString(", ", ", ")
+  }
 }
+
 class TypeParamTypeN (val name :String) : TypeN() {
   override fun toKotlin () = name
 }
+
 class BoundTypeN (val bound :Bound, val type :TypeN) : TypeN() {
   override fun rawType () = type.rawType()
+  override fun kind () = type.kind()
   override fun toKotlin () = "${bound.token}$type"
   override fun toBound () = type
 }
@@ -306,7 +319,7 @@ fun parseType (sig :CharBuffer) :TypeN = when (sig.get()) {
   'F' -> PrimTypeN("Float")
   'D' -> PrimTypeN("Double")
   'L' -> {
-    val name = StringBuilder()
+    val nbuf = StringBuilder()
     var haveParams = false
     while (true) {
       val c = sig.get()
@@ -315,8 +328,8 @@ fun parseType (sig :CharBuffer) :TypeN = when (sig.get()) {
         haveParams = true
         break
       }
-      if (c == '/') name.append('.')
-      else name.append(c)
+      if (c == '/') nbuf.append('.')
+      else nbuf.append(c)
     }
     val params = arrayListOf<TypeN>()
     if (haveParams) {
@@ -327,7 +340,9 @@ fun parseType (sig :CharBuffer) :TypeN = when (sig.get()) {
         throw IllegalArgumentException("Expected ; at $pos in $sig")
       }
     }
-    NamedTypeN(name.toString(), params)
+    val name = nbuf.toString()
+    // special hackery here because we treat String like a primitive/built-in type
+    if (name == "java.lang.String") PrimTypeN("String") else NamedTypeN(name, params)
   }
   'T' -> {
     val name = StringBuilder()
@@ -378,7 +393,6 @@ private fun toKotlinType (javaType :String) :String = when (javaType) {
   "java.lang.Long"      -> "Long"
   "java.lang.Float"     -> "Float"
   "java.lang.Double"    -> "Double"
-  "java.lang.String"    -> "String"
   "java.lang.Class"     -> "Class"
   "java.lang.Object"    -> "Any"
   else -> javaType
@@ -389,6 +403,7 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
   protected var superName :String = ""
   protected val ifaces = arrayListOf<String>()
   protected val props = arrayListOf<PropMeta>()
+  protected val methods = arrayListOf<MethodMeta>()
   protected var kind = Kind.IGNORE
   protected var isAbstract = false
   protected var isObject = false
@@ -441,14 +456,14 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
   override fun visitMethod (access :Int, name :String, desc :String, sig :String?,
                             exns :Array<String>?) :MethodVisitor? {
     if (kind == Kind.SERVICE) {
-      println("Service method : $name / $sig")
-      println(parseMethod(CharBuffer.wrap(sig)))
+      methods += MethodMeta(name, parseMethod(CharBuffer.wrap(sig)))
+      // TODO: complain if method declares thrown exceptions?
     }
     return null
   }
 
   override fun visitEnd () {
-    if (!ignore) metas.put(typeName, ClassMeta(typeName, superName, ifaces, props, kind,
+    if (!ignore) metas.put(typeName, ClassMeta(typeName, superName, ifaces, kind, props, methods,
                                                isAbstract, isObject, hasCustom))
   }
 

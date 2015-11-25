@@ -12,6 +12,8 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.ArrayList
 import java.util.HashMap
 import java.util.jar.JarFile
+import org.jetbrains.kotlin.serialization.ClassData
+import org.jetbrains.kotlin.serialization.jvm.JvmProtoBufUtil
 import org.objectweb.asm.*
 import org.objectweb.asm.signature.*
 import org.objectweb.asm.util.TraceSignatureVisitor
@@ -177,8 +179,10 @@ class PropMeta (val propName :String, val type :TypeN, val isDelegate :Boolean,
   override fun toString () = "$propName :$typeName"
 }
 
-class MethodMeta (val methName :String, types :List<TypeN>) {
-  val argTypes :List<TypeN> = types.subList(0, types.size-1)
+class ArgMeta (val type :TypeN, val name :String)
+
+class MethodMeta (val methName :String, types :List<TypeN>, val names :List<String>) {
+  val args :List<ArgMeta> = types.subList(0, types.size-1).zip(names) { t, n -> ArgMeta(t, n) }
   val returnType :TypeN
   init {
     val last = types.last()
@@ -408,11 +412,41 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
   protected val ifaces = arrayListOf<String>()
   protected val props = arrayListOf<PropMeta>()
   protected val methods = arrayListOf<MethodMeta>()
+  // TODO: this is going to choke on overloaded method names... blah
+  protected val methodParamNames = hashMapOf<String,List<String>>()
+
   protected var kind = Kind.IGNORE
   protected var isAbstract = false
   protected var isObject = false
   protected var ignore = false
   protected var hasCustom = false
+
+  class StringsCollector (val into :ArrayList<String>) : AnnotationVisitor(Opcodes.ASM5) {
+    override fun visit (name :String?, value :Any) {
+      into += value.toString()
+    }
+  }
+
+  override fun visitAnnotation (desc :String, visible :Boolean) :AnnotationVisitor? =
+    if (kind != Kind.SERVICE || desc != "Lkotlin/jvm/internal/KotlinClass;") null
+    else object : AnnotationVisitor(Opcodes.ASM5) {
+      private val data = arrayListOf<String>()
+      private val strings = arrayListOf<String>()
+      override fun visitArray (name :String) = when (name) {
+        "data" -> StringsCollector(data)
+        "strings" -> StringsCollector(strings)
+        else -> null
+      }
+      override fun visitEnd () {
+        val classData = JvmProtoBufUtil.readClassDataFrom(
+          data.toTypedArray(), strings.toTypedArray())
+        val nr = classData.nameResolver
+        for (fn in classData.classProto.functionList) {
+          val fnName = nr.getString(fn.name)
+          methodParamNames[fnName] = fn.valueParameterList.map { nr.getString(it.name) }
+        }
+      }
+    }
 
   override fun visit (version :Int, access :Int, typeName :String, sig :String?, superName :String,
                       ifcs :Array<String>) {
@@ -460,7 +494,10 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
   override fun visitMethod (access :Int, name :String, desc :String, sig :String?,
                             exns :Array<String>?) :MethodVisitor? {
     if (kind == Kind.SERVICE) {
-      methods += MethodMeta(name, parseMethod(CharBuffer.wrap(sig)))
+      val paramNames = requireNotNull(methodParamNames[name]) {
+        "Missing param names for service method: $name"
+      }
+      methods += MethodMeta(name, parseMethod(CharBuffer.wrap(sig)), paramNames)
       // TODO: complain if method declares thrown exceptions?
     }
     return null

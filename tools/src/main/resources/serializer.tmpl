@@ -48,9 +48,9 @@
     register(object : DService.Factory<{{typeName}}>({{typeName}}::class.java) {
       override fun marshaller (host :DService.Host) = object : DService.Marshaller<{{typeName}}>(id), {{typeName}} {
         {{#methods}}
-        override fun {{methName}} ({{#argTypes}}arg{{-index}} :{{toKotlin}}{{^-last}}, {{/-last}}{{/argTypes}}) :RFuture<{{returnType}}> {
+        override fun {{methName}} ({{#args}}{{name}} :{{type}}{{^-last}}, {{/-last}}{{/args}}) :RFuture<{{returnType}}> {
           val result = RPromise.create<{{returnType}}>()
-          host.call(DMessage.ServiceReq(host.id, svcId, {{-index}}, host.nextReqId(), listOf({{#argTypes}}arg{{-index}}{{^-last}}, {{/-last}}{{/argTypes}})), result)
+          host.call(DMessage.ServiceReq(host.id, svcId, {{-index}}, host.nextReqId(), listOf({{#args}}{{name}}{{^-last}}, {{/-last}}{{/args}})), result)
           return result
         }
         {{/methods}}
@@ -59,7 +59,7 @@
         override fun dispatch (req :DMessage.ServiceReq) :RFuture<out Any> {
           return when (req.methId.toInt()) {
             {{#methods}}
-            {{-index}} -> impl.{{methName}}({{#argTypes}}req.args[{{-index}}-1] as {{.}}{{^-last}}, {{/-last}}{{/argTypes}})
+            {{-index}} -> impl.{{methName}}({{#args}}req.args[{{-index}}-1] as {{type}}{{^-last}}, {{/-last}}{{/args}})
             {{/methods}}
             else -> unknown(req.methId, impl)
           }

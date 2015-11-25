@@ -65,17 +65,24 @@ class DDBTest {
   @Test fun testServerCRUD () {
     val server = testServer()
     val ddb = server.openDB("test")
+    var changes = 0
     val ent = ddb.create(TestEntity, {})
     ent.onEmit(TestEntity.Age) { age ->
-      println("Age changed $age")
+      // println("Age changed $age")
+      assertEquals(15, age)
+      changes += 1
     }
     ent.onChange(TestEntity.Age) { nage, oage ->
-      println("Age changed $oage -> $nage")
+      // println("Age changed $oage -> $nage")
+      assertEquals(0, oage)
+      assertEquals(15, nage)
+      changes += 1
     }
     ent.name = "pants"
     assertEquals("pants", ent.name)
     ent.age = 15
     assertEquals(15, ent.age)
+    assertEquals(2, changes)
   }
 
   @Test fun testClientSubscribe () {
@@ -89,13 +96,18 @@ class DDBTest {
     val client = testClient(server)
     client.openDB("test").
       onSuccess { cddb ->
-        println("Got DDB $cddb")
+        // println("Got DDB $cddb")
+        var changes = 0
         val cent = cddb.get<TestEntity>(sent.id)
         cent.onChange(TestEntity.Age) { age, oage ->
-          println("Age changed $oage -> $age")
+          // println("Age changed $oage -> $age")
+          assertEquals(42, oage)
+          assertEquals(15, age)
+          changes += 1
         }
         sent.age = 15
         client.closeDB(cddb)
+        assertEquals(1, changes)
       }.
       onFailure { cause ->
         println("openDB failed: $cause")
@@ -110,19 +122,25 @@ class DDBTest {
     val client = testClient(server)
     client.openDB("test").
       onSuccess { cddb ->
-        println("Got DDB $cddb")
+        // println("Got DDB $cddb")
+        var responses = 0
         val svc = cddb.service(TestService::class.java)
         svc.longest(listOf("Foo", "Foozle", "Fooz")).onSuccess { str ->
-          println("Longest $str")
+          assertEquals("Foozle", str)
+          responses += 1
+          // println("Longest $str")
         }
         svc.lookup(mapOf(5 to listOf("foo", "bar", "baz"),
                          3 to listOf("bim", "bam", "boom")), 5).onSuccess { res ->
-          println("Lookup: 5 -> $res")
+          // println("Lookup: 5 -> $res")
+          assertEquals(listOf("foo", "bar", "baz"), res)
+          responses += 1
         }
         client.closeDB(cddb)
+        assertEquals(2, responses)
       }.
       onFailure { cause ->
-        println("openDB failed: $cause")
+        fail("openDB failed: $cause")
       }
   }
 }

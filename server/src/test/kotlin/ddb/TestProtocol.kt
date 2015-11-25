@@ -79,7 +79,7 @@ class TestProtocol : DProtocol(10) {
           return when (req.methId.toInt()) {
             1 -> impl.longest(req.args[1-1] as List<String>)
             2 -> impl.lookup(req.args[1-1] as Map<Int,List<String>>, req.args[2-1] as Int)
-            else -> RFuture.failure(IllegalArgumentException("Unknown service method [methId=${req.methId}, impl=$impl]"))
+            else -> unknown(req.methId, impl)
           }
         }
       }

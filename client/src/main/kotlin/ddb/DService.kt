@@ -31,6 +31,9 @@ interface DService {
   abstract class Dispatcher (val svcId :Short) {
     /** Dispatches `req`, returning its future result. */
     abstract fun dispatch (req :DMessage.ServiceReq) :RFuture<out Any>
+    /** Used by dispatchers to report invalid requests. */
+    protected fun unknown (methId :Short, impl :Any) = RFuture.failure<Any>(
+      IllegalArgumentException("Unknown service method [methId=$methId, impl=$impl]"))
   }
 
   /** Allows a [DService] to communicate to the [DDB] in which it is hosted. */

@@ -61,7 +61,7 @@
             {{#methods}}
             {{-index}} -> impl.{{methName}}({{#argTypes}}req.args[{{-index}}-1] as {{.}}{{^-last}}, {{/-last}}{{/argTypes}})
             {{/methods}}
-            else -> RFuture.failure(IllegalArgumentException("Unknown service method [methId=${req.methId}, impl=$impl]"))
+            else -> unknown(req.methId, impl)
           }
         }
       }

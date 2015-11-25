@@ -58,12 +58,10 @@ abstract class DProtocol (compCount :Int) {
       // any number of such implementations and we need to cope with them
       if (List::class.java.isAssignableFrom(type)) {
         szer = _byType[List::class.java]
-        println("Mapping $type to List")
         _byType[type] = szer!!
       }
       else if (Map::class.java.isAssignableFrom(type)) {
         szer = _byType[Map::class.java]
-        println("Mapping $type to Map")
         _byType[type] = szer!!
       }
     }
@@ -82,7 +80,8 @@ abstract class DProtocol (compCount :Int) {
 
   /** Returns the [DService.Factory] for `type`. */
   fun <S : DService> factory (type :Class<S>) :DService.Factory<S> =
-    uncheckedCast<DService.Factory<S>>(_byType[type]!!)
+    uncheckedCast<DService.Factory<S>>(requireNotNull(_byType[type]) {
+      "No DService factory registered for $type" })
 
   protected fun register (comp :Component) {
     val id = _nextId++

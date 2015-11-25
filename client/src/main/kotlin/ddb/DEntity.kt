@@ -63,12 +63,12 @@ abstract class DEntity (val id :Long) : DReactor() {
     }
 
     /** Metadata for a simple value property. */
-    class ValueProp<T> (kprop :KMutableProperty1<*,T>, val vtype :Class<T>) : Prop<T>(kprop) {
+    class ValueProp<T:Any> (kprop :KMutableProperty1<*,T>, val vtype :Class<T>) : Prop<T>(kprop) {
       override fun read (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
-        kprop.set(entity, pcol.serializer(vtype).get(pcol, buf))
+        kprop.set(entity, buf.getValue(pcol, vtype))
       }
       override fun write (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
-        pcol.serializer(vtype).put(pcol, buf, kprop.get(entity))
+        buf.putValue(pcol, vtype, kprop.get(entity))
       }
     }
 

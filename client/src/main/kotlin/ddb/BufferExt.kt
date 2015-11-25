@@ -18,11 +18,11 @@ fun ByteBuffer.putString (str :String) { putByteArray(str.toByteArray(StandardCh
 
 private fun isFinal (clazz :Class<*>) = Modifier.isFinal(clazz.getModifiers())
 
-fun <T:DData> ByteBuffer.getValue (pcol :DProtocol, clazz :Class<T>) :T {
+fun <T:Any> ByteBuffer.getValue (pcol :DProtocol, clazz :Class<T>) :T {
   return if (isFinal(clazz)) pcol.serializer(clazz).get(pcol, this)
   else getTagged<T>(pcol)
 }
-fun <T:DData> ByteBuffer.putValue (pcol :DProtocol, clazz :Class<T>, value :T) {
+fun <T:Any> ByteBuffer.putValue (pcol :DProtocol, clazz :Class<T>, value :T) {
   if (isFinal(clazz)) pcol.serializer(clazz).put(pcol, this, value)
   else putTagged(pcol, value)
 }

@@ -42,13 +42,15 @@ abstract class DClient {
   /** Sends a message to the server. */
   abstract fun send (msg :DMessage) :Unit
 
-  internal fun sendCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) {
+  internal fun nextReqId () :Int = ++_lastReqId
+
+  internal fun sendCall (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) {
     _pendingCalls.put(msg.reqId, onRsp)
     send(msg)
   }
 
   protected fun recv (buf :ByteBuffer) {
-    val msg = proto.get(buf)
+    val msg = buf.getTagged<Any>(proto)
     if (msg is DMessage) recv(msg)
     else reportError("Got non-DMessage message: $msg", null)
   }
@@ -69,7 +71,7 @@ abstract class DClient {
     }
     is DMessage.ServiceRsp -> {
       val onRsp = _pendingCalls.remove(msg.reqId)
-      if (onRsp != null) onRsp.onEmit(msg.result)
+      if (onRsp != null) onRsp.complete(msg.result)
       else reportError("Missing listener for $msg", null)
     }
     is DMessage.PropChange -> {
@@ -83,5 +85,6 @@ abstract class DClient {
   private val _dbsByKey = hashMapOf<String,DDBImpl>()
   private val _dbsById = hashMapOf<Int,DDBImpl>()
   private val _pendingOpens = hashMapOf<String,RPromise<DDB>>()
-  private val _pendingCalls = hashMapOf<Int,SignalView.Listener<Try<Any>>>()
+  private val _pendingCalls = hashMapOf<Int,RPromise<out Any>>()
+  private var _lastReqId = 0
 }

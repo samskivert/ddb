@@ -154,15 +154,15 @@ class GenSerializerTest {
     dentity.listProp = listOf("foo", "bar", "baz")
 
     val pcol = TestProtocol
-    pcol.put(buf, data)
-    pcol.put(buf, entity)
-    pcol.put(buf, dentity)
+    buf.putTagged(pcol, data)
+    buf.putTagged(pcol, entity)
+    buf.putTagged(pcol, dentity)
     // println("Bytes: ${buf.position()}")
     buf.flip()
     // can't use default equals because Kotlin annoyingly punts on deep equals for arrays; sigh
-    assertEquals(data.toString(), pcol.get(buf).toString())
-    assertEquals(entity.toString(), pcol.get(buf).toString())
-    assertEquals(dentity.toString(), pcol.get(buf).toString())
+    assertEquals(data.toString(), buf.getTagged<TestData>(pcol).toString())
+    assertEquals(entity.toString(), buf.getTagged<TestEntity>(pcol).toString())
+    assertEquals(dentity.toString(), buf.getTagged<DerivedEntity>(pcol).toString())
   }
 
   @Test fun testSelfSerializers () {

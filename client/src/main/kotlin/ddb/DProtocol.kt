@@ -26,20 +26,33 @@ abstract class DProtocol (compCount :Int) {
   private val _byType = HashMap<Class<*>,Component>(_byId.size)
   init { for (szer in DSerializers.Defaults) register(szer) }
 
-  /** Writes an arbitrary value to `buf`, preceded by its type id. */
-  fun put (buf :ByteBuffer, value :Any) {
-    val szer = serializer(value.javaClass)
-    buf.putShort(szer.id)
-    szer.put(this, buf, value)
+  fun <T:Any, C:MutableCollection<T>> get (buf :ByteBuffer, count :Int, into :C) :C {
+    while (into.size < count) serializer<T>(
+      buf.getShort()).get(this, buf, buf.getShort().toInt(), into)
+    return into
+  }
+  fun <T:Any> put (buf :ByteBuffer, from :Collection<T>) {
+    val count = from.size ; buf.putInt(count)
+    put(buf, count, from)
+  }
+  fun <T:Any> put (buf :ByteBuffer, count :Int, from :Iterable<T>) {
+    if (count > 0) putSegs(buf, from.iterator(), from.first().javaClass, 0, from.iterator())
   }
 
-  /** Reads a type id from `buf` followed by a value of that type. */
-  fun get (buf :ByteBuffer) :Any = serializer<Any>(buf.getShort()).get(this, buf)
+  /** Returns the id assigned to the component for `type`. */
+  fun id (type :Class<*>) :Short =
+    requireNotNull(_byType[type]) { "Not a protocol class: $type" }.id
+
+  /** Returns the class associated with `id`th component. */
+  fun type (id :Short) :Class<*> = try {
+    _byId[id.toInt()]!!.type
+  } catch (e :ArrayIndexOutOfBoundsException) {
+    throw IllegalArgumentException("No protocol component for id $id")
+  }
 
   /** Returns the serializer for value of `type`. */
   fun <T> serializer (type :Class<T>) :DSerializer<T> {
-    val szer = _byType[type]
-    if (szer == null) throw IllegalArgumentException("No serializer for $type")
+    val szer = requireNotNull(_byType[type]) { "No serializer for $type" }
     return uncheckedCast<DSerializer<T>>(szer)
   }
 
@@ -62,5 +75,26 @@ abstract class DProtocol (compCount :Int) {
     _byId[id] = comp
     _byType[comp.type] = comp
     comp.init(id.toShort(), this)
+  }
+
+  // this writes <class code> <count> <elem ...> for consecutive runs of same-typed elements
+  private tailrec fun <T> putSegs (buf :ByteBuffer, citer :Iterator<T>, clazz :Class<T>,
+                                   count :Int, iter :Iterator<T>) {
+    if (!citer.hasNext()) {
+      if (count > 0) putSeg(buf, clazz, count, iter)
+    } else {
+      val nclazz = uncheckedCast<Class<T>>((citer.next() as Any).javaClass)
+      if (nclazz == clazz) putSegs(buf, citer, clazz, count+1, iter)
+      else {
+        if (count > 0) putSeg(buf, clazz, count, iter)
+        putSegs(buf, citer, nclazz, 1, iter)
+      }
+    }
+  }
+  private fun <T> putSeg (buf :ByteBuffer, clazz :Class<T>, count :Int, iter :Iterator<T>) {
+    val szer = serializer(clazz)
+    buf.putShort(szer.id)
+    buf.putShort(count.toShort())
+    szer.put(this, buf, count, iter)
   }
 }

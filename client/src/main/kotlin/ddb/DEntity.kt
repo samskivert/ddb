@@ -73,8 +73,8 @@ abstract class DEntity (val id :Long) : DReactor() {
     }
 
     /** Metadata for a list property. */
-    class ListProp<T> (kprop :KMutableProperty1<*,List<T>>,
-                       val etype :Class<T>) : Prop<List<T>>(kprop) {
+    class ListProp<T:Any> (kprop :KMutableProperty1<*,List<T>>,
+                           val etype :Class<T>) : Prop<List<T>>(kprop) {
 
       override fun read (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
         kprop.set(entity, buf.getList(pcol, etype))
@@ -85,8 +85,8 @@ abstract class DEntity (val id :Long) : DReactor() {
     }
 
     /** Metadata for a map property. */
-    class MapProp<K,V> (kprop :KMutableProperty1<*,Map<K,V>>,
-                        val ktype :Class<K>, val vtype :Class<V>) : Prop<Map<K,V>>(kprop) {
+    class MapProp<K:Any,V:Any> (kprop :KMutableProperty1<*,Map<K,V>>,
+                                val ktype :Class<K>, val vtype :Class<V>) : Prop<Map<K,V>>(kprop) {
 
       override fun read (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) {
         kprop.set(entity, buf.getMap(pcol, ktype, vtype))

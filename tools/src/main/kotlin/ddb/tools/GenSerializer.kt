@@ -178,8 +178,14 @@ class PropMeta (val propName :String, val type :TypeN, val isDelegate :Boolean,
 }
 
 class MethodMeta (val methName :String, types :List<TypeN>) {
-  val returnType = types.last()
-  val argTypes = types.subList(0, types.size-1)
+  val argTypes :List<TypeN> = types.subList(0, types.size-1)
+  val returnType :TypeN
+  init {
+    val last = types.last()
+    if (!(last is NamedTypeN) || last.name != "react.RFuture") throw IllegalArgumentException(
+      "DService methods must return react.RFuture<T> for some T.")
+    returnType = last.params[0]
+  }
 }
 
 data class ClassMeta (val typeName :String, val superName :String, val ifaceNames :List<String>,
@@ -213,9 +219,11 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaceName
     get () = kind == Kind.ENTITY
   val isEntityChild :Boolean
     get () = directKind == Kind.IGNORE
+  val isService :Boolean
+    get () = kind == Kind.SERVICE
 
   val needsSzer :Boolean
-    get () = ((isData && !isAbstract) || isEntity)
+    get () = ((isData && !isAbstract) || isEntity || isService)
 
   val entityTypeName :String // needed to disambig in template
     get () = typeName
@@ -234,7 +242,7 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaceName
         if (smeta.kind != Kind.IGNORE) return smeta.kind
       }
       for (iface in meta.ifaces) {
-        if (iface.kind != Kind.IGNORE) return iface.kind
+        if (iface.kind == Kind.DATA) return iface.kind
       }
       return Kind.IGNORE
     }
@@ -269,13 +277,9 @@ class ArrayTypeN (val comp :TypeN) : TypeN() {
 class NamedTypeN (val name :String, val params :List<TypeN>) : TypeN() {
   override fun rawType () = toKotlinType(name)
 
-  override fun kind () = when (name) {
-    "java.util.List"       -> "List"
-    "java.util.Set"        -> "Set"
-    "java.util.Map"        -> "Map"
-    "java.util.Collection" -> "Collection"
-    "java.lang.Object"     -> "Any"
-    else                   -> "Value"
+  override fun kind () :String {
+    val rtype = rawType()
+    return if (rtype != name) rtype else "Value"
   }
 
   override fun getter () = "buf.get${kind()}(pcol${paramArgs()})"
@@ -298,7 +302,7 @@ class TypeParamTypeN (val name :String) : TypeN() {
 class BoundTypeN (val bound :Bound, val type :TypeN) : TypeN() {
   override fun rawType () = type.rawType()
   override fun kind () = type.kind()
-  override fun toKotlin () = "${bound.token}$type"
+  override fun toKotlin () = type.toKotlin() // "${bound.token}$type"
   override fun toBound () = type
 }
 
@@ -335,10 +339,7 @@ fun parseType (sig :CharBuffer) :TypeN = when (sig.get()) {
     if (haveParams) {
       while (sig.peek() != '>') params.add(parseType(sig))
       sig.get() // skip the '>'
-      if (sig.get() != ';') {
-        val pos = sig.position()-1
-        throw IllegalArgumentException("Expected ; at $pos in $sig")
-      }
+      require(sig.get() == ';') { val pos = sig.position()-1 ; "Expected ; at $pos in $sig" }
     }
     val name = nbuf.toString()
     // special hackery here because we treat String like a primitive/built-in type
@@ -366,8 +367,7 @@ fun parseType (sig :CharBuffer) :TypeN = when (sig.get()) {
 // parses bytecode method type signature '(T*)R' into a list of trees (last elem is return type)
 fun parseMethod (sig :CharBuffer) :List<TypeN> {
   val oc = sig.get()
-  if (oc != '(') throw IllegalArgumentException(
-    "Buffer does not contain method signature? Open: $oc")
+  require(oc == '(') { "Buffer does not contain method signature? Open: $oc" }
 
   val types = arrayListOf<TypeN>()
   var nc = sig.peek()
@@ -385,16 +385,20 @@ private fun stripPost (typeName :String, postfix :String) =
   else typeName
 
 private fun toKotlinType (javaType :String) :String = when (javaType) {
-  "java.lang.Boolean"   -> "Boolean"
-  "java.lang.Byte"      -> "Byte"
-  "java.lang.Character" -> "Char"
-  "java.lang.Short"     -> "Short"
-  "java.lang.Integer"   -> "Int"
-  "java.lang.Long"      -> "Long"
-  "java.lang.Float"     -> "Float"
-  "java.lang.Double"    -> "Double"
-  "java.lang.Class"     -> "Class"
-  "java.lang.Object"    -> "Any"
+  "java.lang.Boolean"    -> "Boolean"
+  "java.lang.Byte"       -> "Byte"
+  "java.lang.Character"  -> "Char"
+  "java.lang.Short"      -> "Short"
+  "java.lang.Integer"    -> "Int"
+  "java.lang.Long"       -> "Long"
+  "java.lang.Float"      -> "Float"
+  "java.lang.Double"     -> "Double"
+  "java.lang.Class"      -> "Class"
+  "java.lang.Object"     -> "Any"
+  "java.util.List"       -> "List"
+  "java.util.Set"        -> "Set"
+  "java.util.Map"        -> "Map"
+  "java.util.Collection" -> "Collection"
   else -> javaType
 }
 

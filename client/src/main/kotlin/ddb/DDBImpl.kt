@@ -4,8 +4,7 @@
 package ddb
 
 import java.util.HashMap
-import react.SignalView
-import react.Try
+import react.RPromise
 import ddb.util.*
 
 class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey, rsp.dbId),
@@ -15,12 +14,14 @@ class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey
   override fun <E : DEntity> keys (emeta :DEntity.Meta<E>) = etable(emeta).keys
   override fun <E : DEntity> entities (emeta :DEntity.Meta<E>) = etable(emeta).values
   override fun <E : DEntity> get (id :Long) =
-    uncheckedCast<E>(_entities[id] ?: throw IllegalArgumentException("No entity with key $id"))
-  override fun <S : DService> service (sclass :Class<S>) = uncheckedCast<S>(_services[sclass] ?:
-    throw IllegalArgumentException("No service registered for $sclass"))
+    uncheckedCast<E>(requireNotNull(_entities[id]) { "No entity with key $id" })
+  override fun <S : DService> service (sclass :Class<S>) =
+    uncheckedCast<S>(requireNotNull(_services[sclass]) { "No service registered for $sclass" })
 
   // from DService.Host
-  override fun call (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) =
+  override fun nextReqId () = client.nextReqId()
+  // from DService.Host
+  override fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) =
     client.sendCall(msg, onRsp)
 
   // from DEntity.Host

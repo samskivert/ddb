@@ -44,5 +44,28 @@
     })
     {{/isEntity}}
     {{/hasCustom}}
+    {{#isService}}
+    register(object : DService.Factory<{{typeName}}>({{typeName}}::class.java) {
+      override fun marshaller (host :DService.Host) = object : DService.Marshaller<{{typeName}}>(id), {{typeName}} {
+        {{#methods}}
+        override fun {{methName}} ({{#argTypes}}arg{{-index}} :{{toKotlin}}{{^-last}}, {{/-last}}{{/argTypes}}) :RFuture<{{returnType}}> {
+          val result = RPromise.create<{{returnType}}>()
+          host.call(DMessage.ServiceReq(host.id, svcId, {{-index}}, host.nextReqId(), listOf({{#argTypes}}arg{{-index}}{{^-last}}, {{/-last}}{{/argTypes}})), result)
+          return result
+        }
+        {{/methods}}
+      }
+      override fun dispatcher (impl :{{typeName}}) = object : DService.Dispatcher(id) {
+        override fun dispatch (req :DMessage.ServiceReq) :RFuture<out Any> {
+          return when (req.methId.toInt()) {
+            {{#methods}}
+            {{-index}} -> impl.{{methName}}({{#argTypes}}req.args[{{-index}}-1] as {{.}}{{^-last}}, {{/-last}}{{/argTypes}})
+            {{/methods}}
+            else -> RFuture.failure(IllegalArgumentException("Unknown service method [methId=${req.methId}, impl=$impl]"))
+          }
+        }
+      }
+    })
+    {{/isService}}
     {{/metas}}
   }

@@ -4,8 +4,7 @@
 package ddb
 
 import react.RFuture
-import react.SignalView
-import react.Try
+import react.RPromise
 
 /**
  * Marker trait for services which are provided by a [DDB]. Service methods must only accept
@@ -25,13 +24,13 @@ interface DService {
   /** Handles the marshalling of service calls into [DMessage.ServiceReq] messages and sending them
     * along for delivery to the server. A concrete marshaller class is generated for all [DService]
     * subtypes. */
-  abstract class Marshaller<T : DService> (val svcId :Int, val source :DMessage.Source) : DService
+  abstract class Marshaller<S : DService> (val svcId :Short) : DService
 
   /** Handles unmarshalling [DMessage.ServiceReq] messages, calling the appropriate [DService]
     * method, and wiring up a response listener. */
-  abstract class Dispatcher (val svcId :Int, val impl :DService) {
-    /** Dispatches `req` to `impl`, returning its future result. */
-    abstract fun dispatch (req :DMessage.ServiceReq) :RFuture<Any>
+  abstract class Dispatcher (val svcId :Short) {
+    /** Dispatches `req`, returning its future result. */
+    abstract fun dispatch (req :DMessage.ServiceReq) :RFuture<out Any>
   }
 
   /** Allows a [DService] to communicate to the [DDB] in which it is hosted. */
@@ -39,7 +38,10 @@ interface DService {
     /** The id of the DDB that's hosting this service. */
     val id :Int
 
+    /** Returns an id to use for a service request to this host. */
+    fun nextReqId () :Int
+
     /** Processes the [DService] call in `msg`, reporting success or failure to `onRsp`. */
-    fun call (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) :Unit
+    fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) :Unit
   }
 }

@@ -11,15 +11,6 @@ import react.Try
 /** Encapsulates messages between client and server. */
 abstract class DMessage : DData {
 
-  /** A thing that accepts [DMessage]s. */
-  interface Source {
-    /** The id of the DDB that's on the other end of this source. */
-    val id :Int
-
-    /** Processes the [DService] call in `msg`, reporting success or failure to `onRsp`. */
-    fun call (msg :ServiceReq, onRsp :SignalView.Listener<Try<Any>>) :Unit
-  }
-
   /** Returns a hint to the flattened size of this message, in bytes. */
   open val sizeHint :Int
     get () = 256
@@ -33,7 +24,7 @@ abstract class DMessage : DData {
         // TODO: reuse buffers? track distribution of size by concrete message type and start with a
         // buffer that is at the 90th size percentile?
         val buf = ByteBuffer.allocate(size)
-        proto.put(buf, this)
+        buf.putTagged(proto, this)
         buf.flip()
         return buf
       } catch (e :BufferOverflowException) {
@@ -67,10 +58,11 @@ abstract class DMessage : DData {
   }
 
   /** Initiates a [DService] call. Client to server. */
-  abstract class ServiceReq (val dbId :Int, val svcId :Int, val reqId :Int) : DMessage() {
-    override fun toString () = "ServiceReq(db=$dbId, svc=$svcId, req=$reqId)"
+  class ServiceReq (val dbId :Int, val svcId :Short, val methId :Short, val reqId :Int,
+                    val args :List<Any>) : DMessage() {
+    override fun toString () =
+      "ServiceReq(db=$dbId, svc=$svcId, meth=$methId, req=$reqId, argc=${args.size})"
   }
-  // TODO: just stick 'args :Array<Any?> in ServiceReq?
   /** Simplifies life when dispatching [DService] responses. */
   abstract class ServiceRsp (val reqId :Int) : DMessage () {
     abstract val result :Try<Any>

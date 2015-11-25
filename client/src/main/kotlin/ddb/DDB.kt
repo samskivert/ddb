@@ -35,8 +35,8 @@ abstract class DDB (val key :String, val id :Int) {
     * @throws IllegalArgumentException if no singleton entity exists for `emeta`. */
   fun <E : DEntity> get (emeta :DEntity.Meta<E>) :E {
     val iter = entities(emeta).iterator()
-    if (iter.hasNext()) return iter.next()
-    else throw IllegalArgumentException("No singleton registered for $emeta")
+    require(iter.hasNext()) { "No singleton registered for $emeta" }
+    return iter.next()
   }
 
   /** Resolves and returns the service with class `sclass`.

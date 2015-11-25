@@ -4,8 +4,10 @@
 package ddb
 
 import java.nio.ByteBuffer
+import react.RFuture
+import react.RPromise
 
-class TestProtocol : DProtocol(8) {
+class TestProtocol : DProtocol(10) {
   init {
     register(object : DSerializer<ddb.DMessage.FailedRsp>(ddb.DMessage.FailedRsp::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.FailedRsp(
@@ -15,6 +17,22 @@ class TestProtocol : DProtocol(8) {
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.FailedRsp) {
         buf.putInt(obj.reqId)
         buf.putString(obj.cause)
+      }
+    })
+    register(object : DSerializer<ddb.DMessage.ServiceReq>(ddb.DMessage.ServiceReq::class.java) {
+      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.ServiceReq(
+        buf.getInt(),
+        buf.getShort(),
+        buf.getShort(),
+        buf.getInt(),
+        buf.getList(pcol, Any::class.java)
+      )
+      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.ServiceReq) {
+        buf.putInt(obj.dbId)
+        buf.putShort(obj.svcId)
+        buf.putShort(obj.methId)
+        buf.putInt(obj.reqId)
+        buf.putList(pcol, Any::class.java, obj.args)
       }
     })
     register(object : DSerializer<ddb.DMessage.UnsubscribeReq>(ddb.DMessage.UnsubscribeReq::class.java) {
@@ -41,6 +59,29 @@ class TestProtocol : DProtocol(8) {
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.SubFailedRsp) {
         buf.putString(obj.dbKey)
         buf.putString(obj.cause)
+      }
+    })
+    register(object : DService.Factory<ddb.DDBTest.TestService>(ddb.DDBTest.TestService::class.java) {
+      override fun marshaller (host :DService.Host) = object : DService.Marshaller<ddb.DDBTest.TestService>(id), ddb.DDBTest.TestService {
+        override fun longest (arg1 :List<String>) :RFuture<String> {
+          val result = RPromise.create<String>()
+          host.call(DMessage.ServiceReq(host.id, svcId, 1, host.nextReqId(), listOf(arg1)), result)
+          return result
+        }
+        override fun lookup (arg1 :Map<Int,List<String>>, arg2 :Int) :RFuture<List<String>> {
+          val result = RPromise.create<List<String>>()
+          host.call(DMessage.ServiceReq(host.id, svcId, 2, host.nextReqId(), listOf(arg1, arg2)), result)
+          return result
+        }
+      }
+      override fun dispatcher (impl :ddb.DDBTest.TestService) = object : DService.Dispatcher(id) {
+        override fun dispatch (req :DMessage.ServiceReq) :RFuture<out Any> {
+          return when (req.methId.toInt()) {
+            1 -> impl.longest(req.args[1-1] as List<String>)
+            2 -> impl.lookup(req.args[1-1] as Map<Int,List<String>>, req.args[2-1] as Int)
+            else -> RFuture.failure(IllegalArgumentException("Unknown service method [methId=${req.methId}, impl=$impl]"))
+          }
+        }
       }
     })
     register(object : DSerializer<ddb.DMessage.PropChange>(ddb.DMessage.PropChange::class.java) {

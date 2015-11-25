@@ -5,8 +5,7 @@ package ddb
 
 import java.util.ArrayDeque
 import java.util.HashMap
-import react.SignalView
-import react.Try
+import react.*
 import ddb.util.*
 
 abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : SourceDB(key, id) {
@@ -44,8 +43,8 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   // from BaseDB
   override fun <E : DEntity> keys (emeta :DEntity.Meta<E>) = etable(emeta).keys
   override fun <E : DEntity> entities (emeta :DEntity.Meta<E>) = etable(emeta).values
-  override fun <E : DEntity> get (id :Long) :E = uncheckedCast<E>(_entities[id] ?:
-    throw IllegalArgumentException("No entity with id: $id"))
+  override fun <E : DEntity> get (id :Long) :E =
+    uncheckedCast<E>(requireNotNull(_entities[id]) { "No entity with id: $id" })
 
   // from SourceDB
   override fun <S : DService> register (sclass :Class<S>, service :S) {
@@ -75,7 +74,13 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   }
 
   // from DService.Host
-  override fun call (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) {
+  override fun nextReqId () = TODO()
+  // from DService.Host
+  override fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) {
+    postOp({ processCall(msg, onRsp.completer()) })
+  }
+  // a call variant that takes a response listener directly instead of wrapping in a RPromise
+  fun call (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<out Any>>) {
     postOp({ processCall(msg, onRsp) })
   }
 
@@ -94,7 +99,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
     if (active != null) server.exec.execute(active)
   }
 
-  private fun processCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<Any>>) {
+  private fun processCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<out Any>>) {
     val disp = _dispatchers[msg.svcId]
     if (disp != null) disp.dispatch(msg).onComplete(onRsp)
     else onRsp.onEmit(Try.failure(Exception("Unknown service: $msg")))
@@ -131,8 +136,8 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   private val _byType = hashMapOf<String,HashMap<Long,DEntity>>()
   private var _nextId = 1L
 
-  private val _services = hashMapOf<Class<*>,Int>()
-  private val _dispatchers = hashMapOf<Int,DService.Dispatcher>()
+  private val _services = hashMapOf<Class<*>,Short>()
+  private val _dispatchers = hashMapOf<Short,DService.Dispatcher>()
   private val _subscribers = arrayListOf<DSession>()
 
   private val _ops = ArrayDeque<Runnable>()

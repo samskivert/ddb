@@ -29,8 +29,8 @@ abstract class DSession (val server :DServer) {
   fun send (msg :DMessage) :Unit = send(msg.flatten(server.proto))
 
   /** Handles results from [DService] calls initiated by this client. */
-  fun svcRsp (dmsg :DMessage.ServiceReq) = object : SignalView.Listener<Try<Any>> {
-    override fun onEmit (result :Try<Any>) {
+  fun svcRsp (dmsg :DMessage.ServiceReq) = object : SignalView.Listener<Try<out Any>> {
+    override fun onEmit (result :Try<out Any>) {
       if (result.isSuccess()) {
         send(DMessage.CalledRsp(dmsg.reqId, result.get()))
       } else {
@@ -43,7 +43,7 @@ abstract class DSession (val server :DServer) {
   /** Decodes the message in `buf` and dispatches it appropriately. */
   protected fun process (buf :ByteBuffer) {
     try {
-      val msg = server.proto.get(buf)
+      val msg = buf.getTagged<Any>(server.proto)
       if (msg is DMessage) server.dispatch(msg, this)
       else server.onErr.report("Got unknown message from client [$this, msg=$msg]", null)
     } catch (t :Throwable) {

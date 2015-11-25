@@ -16,7 +16,8 @@ fun ByteBuffer.putBoolean (v :Boolean) { put(if (v) 1.toByte() else 0.toByte()) 
 fun ByteBuffer.getString () :String = String(getByteArray(), StandardCharsets.UTF_8)
 fun ByteBuffer.putString (str :String) { putByteArray(str.toByteArray(StandardCharsets.UTF_8)) }
 
-private fun isFinal (clazz :Class<*>) = Modifier.isFinal(clazz.getModifiers())
+private fun isFinal (clazz :Class<*>) =
+  Modifier.isFinal(clazz.getModifiers()) || clazz.isEnum()
 
 fun <T:Any> ByteBuffer.getValue (pcol :DProtocol, clazz :Class<T>) :T {
   return if (isFinal(clazz)) pcol.serializer(clazz).get(pcol, this)
@@ -149,9 +150,20 @@ fun <T:Any> ByteBuffer.putList (pcol :DProtocol, clazz :Class<T>, list :List<T>)
 
 fun <K:Any,V:Any> ByteBuffer.getMap (
   pcol :DProtocol, kclazz :Class<K>, vclazz :Class<V>) :Map<K,V> {
-  val kszer = pcol.serializer(kclazz) ; val vszer = pcol.serializer(vclazz)
   val size = getInt() ; val map = HashMap<K,V>(size)
-  var ii = 0 ; while (ii++ < size) map.put(kszer.get(pcol, this), vszer.get(pcol, this))
+  val kfinal = isFinal(kclazz) ; val vfinal = isFinal(vclazz)
+  if (kfinal && vfinal) {
+    val kszer = pcol.serializer(kclazz) ; val vszer = pcol.serializer(vclazz)
+    var ii = 0 ; while (ii++ < size) map.put(kszer.get(pcol, this), vszer.get(pcol, this))
+  } else if (kfinal) {
+    val kszer = pcol.serializer(kclazz)
+    var ii = 0 ; while (ii++ < size) map.put(kszer.get(pcol, this), getTagged(pcol))
+  } else if (vfinal) {
+    val vszer = pcol.serializer(vclazz)
+    var ii = 0 ; while (ii++ < size) map.put(getTagged(pcol), vszer.get(pcol, this))
+  } else {
+    var ii = 0 ; while (ii++ < size) map.put(getTagged(pcol), getTagged(pcol))
+  }
   return map
 }
 fun <K:Any,V:Any> ByteBuffer.putMap (pcol :DProtocol, kclazz :Class<K>, vclazz :Class<V>,
@@ -167,5 +179,7 @@ fun <K:Any,V:Any> ByteBuffer.putMap (pcol :DProtocol, kclazz :Class<K>, vclazz :
   } else if (vfinal) {
     val vszer = pcol.serializer(vclazz)
     for ((k, v) in map.entries) { putTagged(pcol, k) ; vszer.put(pcol, this, v) }
+  } else {
+    for ((k, v) in map.entries) { putTagged(pcol, k) ; putTagged(pcol, v) }
   }
 }

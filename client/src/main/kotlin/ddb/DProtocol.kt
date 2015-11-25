@@ -53,17 +53,18 @@ abstract class DProtocol (compCount :Int) {
   /** Returns the serializer for value of `type`. */
   fun <T> serializer (type :Class<T>) :DSerializer<T> {
     var szer = _byType[type]
+    // if we have no serializer, we may need to lazily initialize based on a "parent" type
     if (szer == null) {
-      // we lazily fill in serializers for anything assignable to List or Map because there could be
-      // any number of such implementations and we need to cope with them
-      if (List::class.java.isAssignableFrom(type)) {
-        szer = _byType[List::class.java]
-        _byType[type] = szer!!
-      }
-      else if (Map::class.java.isAssignableFrom(type)) {
-        szer = _byType[Map::class.java]
-        _byType[type] = szer!!
-      }
+      val ptype =
+        // List or Map may be any number of concrete classes, but we use a canonical serializer for
+        // each which turns everything into ArrayList + HashMap
+        if (List::class.java.isAssignableFrom(type)) List::class.java
+        else if (Map::class.java.isAssignableFrom(type)) Map::class.java
+        // enums have have subclasses which specialize particular instances of the enum,
+        // we have to catch those here and map them to the base enum type
+        else if (type.superclass?.isEnum() ?: false) type.superclass
+        else null
+      if (ptype != null) szer = _byType[ptype]?.apply { _byType[type] = this }
     }
     return uncheckedCast<DSerializer<T>>(requireNotNull(szer) { "No serializer for $type" })
   }

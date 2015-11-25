@@ -63,7 +63,7 @@ abstract class Cons (owner :DReactor?): Connection()  {
         }
 
         fun remove(head: Cons?, cons: Cons): Cons? {
-            if (head == null) return head
+            if (head == null) return null
             if (head == cons) return head.next
             head.next = remove(head.next, cons)
             return head

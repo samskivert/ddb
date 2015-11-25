@@ -36,7 +36,7 @@ fun main (argv :Array<String>) {
   val out = Files.newBufferedWriter(destP)
   val initLam = object : Mustache.Lambda {
     override fun execute (frag :Template.Fragment, out :Writer){
-      process(sources, out)
+      writeSerializer(metas, out)
     }
   }
   tmpl.execute(mapOf("count" to metas.size, "init" to initLam), out)

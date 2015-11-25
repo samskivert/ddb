@@ -8,7 +8,7 @@ import java.util.ArrayList
 import java.util.HashMap
 import ddb.util.*
 
-abstract class DSerializer<T> (type :Class<T>) : DProtocol.Component(type) {
+abstract class DSerializer<T> (type :Class<*>) : DProtocol.Component(type) {
 
   abstract fun get (pcol :DProtocol, buf :ByteBuffer) :T
   abstract fun put (pcol :DProtocol, buf :ByteBuffer, obj :T) :Unit
@@ -169,16 +169,16 @@ object DSerializers {
       buf.putShort(pcol.id(obj)) }
   }
 
-  val ArrayListS = object : DSerializer<ArrayList<*>>(ArrayList::class.java) {
-    override fun get (pcol :DProtocol, buf :ByteBuffer) :ArrayList<*> {
+  val ListS = object : DSerializer<List<Any>>(List::class.java) {
+    override fun get (pcol :DProtocol, buf :ByteBuffer) :List<Any> {
       val length = buf.getInt()
       return pcol.get(buf, length, ArrayList<Any>(length))
     }
-    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ArrayList<*>) { pcol.put(buf, obj) }
+    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :List<Any>) { pcol.put(buf, obj) }
   }
 
-  val HashMapS = object : DSerializer<HashMap<*,*>>(HashMap::class.java) {
-    override fun get (pcol :DProtocol, buf :ByteBuffer) :HashMap<*,*> {
+  val MapS = object : DSerializer<Map<Any,Any>>(Map::class.java) {
+    override fun get (pcol :DProtocol, buf :ByteBuffer) :Map<Any,Any> {
       val size = buf.getInt()
       val keys = pcol.get(buf, size, ArrayList<Any>(size))
       val values = pcol.get(buf, size, ArrayList<Any>(size))
@@ -186,7 +186,7 @@ object DSerializers {
       var ii = 0 ; while (ii++ < size) map.put(keys[ii], values[ii])
       return map
     }
-    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :HashMap<*,*>) {
+    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :Map<Any,Any>) {
       val size = obj.size
       val keys = ArrayList<Any>(size)
       val values = ArrayList<Any>(size)
@@ -201,5 +201,5 @@ object DSerializers {
 
   val Defaults = arrayOf(VoidS, BooleanS, JBooleanS, ByteS, JByteS, CharS, JCharS, ShortS, JShortS,
                          IntS, JIntS, LongS, JLongS, FloatS, JFloatS, DoubleS, JDoubleS, StringS,
-                         ClassS, ArrayListS, HashMapS)
+                         ClassS, ListS, MapS)
 }

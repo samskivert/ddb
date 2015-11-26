@@ -20,6 +20,13 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   /** Unsubscribes `sess` from this db. */
   fun unsubscribe (sess :DSession) :Unit = postOp({ processUnsubscribe(sess) })
 
+  /** Processes a service call from a client session. */
+  fun call (msg :DMessage.ServiceReq, session :DSession) {
+    postOp({ session.runBound {
+      processCall(msg, session.svcRsp(msg))
+    }})
+  }
+
   /** Queues the supplied operation for execution on this DDB's single-threaded execution context.
     * The op will be run as soon as all other operations queued on this DDB have completed. */
   fun postOp (op :() -> Unit) :Unit = synchronized(this) {
@@ -78,10 +85,6 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   // from DService.Host
   override fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) {
     postOp({ processCall(msg, onRsp.completer()) })
-  }
-  // a call variant that takes a response listener directly instead of wrapping in a RPromise
-  fun call (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<out Any>>) {
-    postOp({ processCall(msg, onRsp) })
   }
 
   // from DEntity.Host

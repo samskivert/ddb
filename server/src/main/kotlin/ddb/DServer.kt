@@ -47,7 +47,7 @@ abstract class DServer (val exec :Executor) {
   // this should be internal but then I can't use it in test code, blah
   /*internal*/ fun dispatch (dmsg :DMessage, session :DSession) { when (dmsg) {
     is DMessage.SubscribeReq -> _dbsByKey[dmsg.dbKey]?.subscribe(session)
-    is DMessage.ServiceReq   -> _dbsById[dmsg.dbId]?.call(dmsg, session.svcRsp(dmsg))
+    is DMessage.ServiceReq   -> _dbsById[dmsg.dbId]?.call(dmsg, session)
   }}
 
   private val _nextServiceId = AtomicInteger(1)

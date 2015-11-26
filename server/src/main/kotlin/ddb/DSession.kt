@@ -4,9 +4,12 @@
 package ddb
 
 import java.nio.ByteBuffer
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.reflect.KClass
 import react.Signal
 import react.SignalView
 import react.Try
+import ddb.util.*
 
 /**
  * Tracks information for a single client session. Sending messages to the client is done via this
@@ -15,12 +18,51 @@ import react.Try
  */
 abstract class DSession (val server :DServer) {
 
+  // TODO: server-initiated session closure
+  // TODO: what else?
+
+  companion object {
+
+    /** Returns the currently bound session.
+      * @throws IllegalStateException if no session is currently bound. */
+    val current :DSession
+      get () = threadSession.get() ?: throw IllegalStateException("No current session.")
+
+    /** Returns the currently bound session or null. */
+    val currentOrNull :DSession?
+      get () = threadSession.get()
+
+    /** Returns the state instance identified by `clazz` registered for the current session, or
+      * null if nothing is registered for `clazz`.
+      * @throws IllegalStateException if no session is currently bound. */
+    fun <T:Any> state (clazz :KClass<T>) :T? = current.state(clazz)
+
+    /** Sets the state instance identified by `clazz` to `value` for the current session.
+      * @throws IllegalStateException if no session is currently bound. */
+    fun <T:Any> setState (clazz :KClass<T>, value :T) { current.setState(clazz, value) }
+
+    /** Contains a reference to currently active session, if any. */
+    val threadSession = ThreadLocal<DSession>()
+  }
+
   /** A signal emitted when this session has terminated (cleanly or in error). */
   val onClose = Signal.create<DSession>()
 
   /** A signal emitted when this session terminates due to connection failure. This will be followed
     * by an emitting of the [onClose] signal. */
   val onError = Signal.create<Throwable>()
+
+  /** Runs `op` with this session bound as the current session. */
+  inline fun runBound (crossinline op :() -> Unit) {
+    threadSession.set(this)
+    try { op() }
+    finally { threadSession.set(null) }
+  }
+
+  /** Returns the state instance identified by `clazz`, or null. */
+  fun <T:Any> state (clazz :KClass<T>) :T? = uncheckedNullCast<T>(_state[clazz])
+  /** Sets the state instance identified by `clazz` to `value`. */
+  fun <T:Any> setState (clazz :KClass<T>, value :T) { _state[clazz] = value }
 
   /** Queues the binary `msg` for delivery to this client. */
   abstract fun send (msg :ByteBuffer) :Unit
@@ -51,7 +93,5 @@ abstract class DSession (val server :DServer) {
     }
   }
 
-  // TODO: session local state
-  // TODO: server-initiated session closure
-  // TODO: what else?
+  private val _state = ConcurrentHashMap<KClass<*>,Any>()
 }

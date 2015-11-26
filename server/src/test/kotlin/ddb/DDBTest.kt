@@ -50,6 +50,7 @@ class DDBTest {
 
   fun testClient (server :DServer) = object : DClient() {
     val session = object : DSession(server) {
+      override fun address () = "test"
       override fun send (msg :ByteBuffer) = recv(msg)
     }
     override val proto = TestProtocol()

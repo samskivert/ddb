@@ -64,6 +64,9 @@ abstract class DSession (val server :DServer) {
   /** Sets the state instance identified by `clazz` to `value`. */
   fun <T:Any> setState (clazz :KClass<T>, value :T) { _state[clazz] = value }
 
+  /** Returns a string representation of the address (usually IP) associated with this session. */
+  abstract fun address () :String
+
   /** Queues the binary `msg` for delivery to this client. */
   abstract fun send (msg :ByteBuffer) :Unit
 

@@ -37,6 +37,9 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
     }
 
     // from DSession
+    override fun address () = ipaddr
+
+    // from DSession
     override fun send (msg :ByteBuffer) {
       if (websess!!.isOpen()) endpoint!!.sendBytes(msg, writeCB)
       else server.onErr.report("Dropping message to closed WebSocket [$this, msg=$msg]", null);

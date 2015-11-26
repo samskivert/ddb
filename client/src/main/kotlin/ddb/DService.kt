@@ -13,6 +13,10 @@ import react.RPromise
  */
 interface DService {
 
+  /** An exception thrown to indicate service failure. Such exceptions are propagated back to the
+    * client without recording them internally as unexpected failures. */
+  class ServiceException (msg :String) : Exception(msg)
+
   /** Wires [DService] into the [DProtocol] system. */
   abstract class Factory<S : DService> (type :Class<S>) : DProtocol.Component(type) {
     /** Creates a marshaller for our service with the supplied configuration. */

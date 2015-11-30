@@ -36,7 +36,7 @@ class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey
   }
 
   internal fun apply (msg :DMessage.EntityCreated) {
-    _entities[msg.entity.id] = msg.entity
+    register(msg.entity)
     entityCreated.emit(msg.entity)
   }
   internal fun apply (msg :DMessage.EntityDestroyed) {
@@ -55,16 +55,18 @@ class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey
     return uncheckedCast<MutableMap<Long,E>>(table)
   }
 
+  private fun register (ent :DEntity) {
+    _entities[ent.id] = ent
+    etable(ent.meta)[ent.id] = ent
+    ent._init(this, client.proto.entitySerializer(ent.javaClass))
+  }
+
   private val _entities = hashMapOf<Long,DEntity>()
   private val _byType = hashMapOf<String,HashMap<Long,DEntity>>()
   private val _services = hashMapOf<Class<*>,DService>()
 
   init {
-    for (ent in rsp.entities) {
-      _entities[ent.id] = ent
-      etable(ent.meta)[ent.id] = ent
-      ent._init(this, client.proto.entitySerializer(ent.javaClass))
-    }
+    for (ent in rsp.entities) register(ent)
     for (sclass in rsp.services) _services[sclass] = client.proto.factory(
       uncheckedCast<Class<DService>>(sclass)).marshaller(this)
   }

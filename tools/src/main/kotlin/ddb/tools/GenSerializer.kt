@@ -336,7 +336,7 @@ fun parseType (sig :CharBuffer) :TypeN = when (sig.get()) {
         haveParams = true
         break
       }
-      if (c == '/') nbuf.append('.')
+      if (c == '/' || c == '$') nbuf.append('.')
       else nbuf.append(c)
     }
     val params = arrayListOf<TypeN>()

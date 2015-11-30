@@ -52,3 +52,12 @@ interface DService {
     fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) :Unit
   }
 }
+
+/** Throws `DService.ServiceException` with `msg` unless `cond` is true. */
+inline fun svcRequire (cond :Boolean, msg :() -> String) {
+  if (!cond) throw DService.ServiceException(msg())
+}
+
+/** Throws `DService.ServiceException` with `msg` unless `cond` is true. */
+inline fun <T:Any> svcRequireNotNull (value :T?, msg :() -> String) :T =
+  if (value == null) throw DService.ServiceException(msg()) else value

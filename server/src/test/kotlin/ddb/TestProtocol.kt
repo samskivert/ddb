@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import react.RFuture
 import react.RPromise
 
-class TestProtocol : DProtocol(10) {
+class TestProtocol : DProtocol(12) {
   init {
     register(object : DSerializer<ddb.DMessage.FailedRsp>(ddb.DMessage.FailedRsp::class.java) {
       override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.FailedRsp(
@@ -17,6 +17,16 @@ class TestProtocol : DProtocol(10) {
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.FailedRsp) {
         buf.putInt(obj.reqId)
         buf.putString(obj.cause)
+      }
+    })
+    register(object : DSerializer<ddb.DMessage.EntityDestroyed>(ddb.DMessage.EntityDestroyed::class.java) {
+      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.EntityDestroyed(
+        buf.getInt(),
+        buf.getLong()
+      )
+      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.EntityDestroyed) {
+        buf.putInt(obj.dbId)
+        buf.putLong(obj.entId)
       }
     })
     register(object : DSerializer<ddb.DMessage.ServiceReq>(ddb.DMessage.ServiceReq::class.java) {
@@ -106,6 +116,16 @@ class TestProtocol : DProtocol(10) {
       override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.CalledRsp) {
         buf.putInt(obj.reqId)
         buf.putAny(pcol, obj.value)
+      }
+    })
+    register(object : DSerializer<ddb.DMessage.EntityCreated>(ddb.DMessage.EntityCreated::class.java) {
+      override fun get (pcol :DProtocol, buf :ByteBuffer) = ddb.DMessage.EntityCreated(
+        buf.getInt(),
+        buf.getValue(pcol, ddb.DEntity::class.java)
+      )
+      override fun put (pcol :DProtocol, buf :ByteBuffer, obj :ddb.DMessage.EntityCreated) {
+        buf.putInt(obj.dbId)
+        buf.putValue(pcol, ddb.DEntity::class.java, obj.entity)
       }
     })
     register(object : DEntitySerializer<ddb.DDBTest.TestEntity>(ddb.DDBTest.TestEntity::class.java) {

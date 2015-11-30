@@ -55,29 +55,35 @@ abstract class DClient {
     else reportError("Got non-DMessage message: $msg", null)
   }
 
-  protected fun recv (msg :DMessage) :Unit = when (msg) {
-    is DMessage.SubscribedRsp -> {
-      val ddb = DDBImpl(this, msg)
-      _dbsByKey[msg.dbKey] = ddb
-      _dbsById[msg.dbId] = ddb
-      val onOpen = _pendingOpens.remove(msg.dbKey)
-      if (onOpen != null) onOpen.succeed(ddb)
-      else reportError("Missing listener for $msg", null)
+  protected fun recv (msg :DMessage) {
+    try {
+      when (msg) {
+        is DMessage.SubscribedRsp -> {
+          val ddb = DDBImpl(this, msg)
+          _dbsByKey[msg.dbKey] = ddb
+          _dbsById[msg.dbId] = ddb
+          val onOpen = _pendingOpens.remove(msg.dbKey)
+          if (onOpen != null) onOpen.succeed(ddb)
+          else reportError("Missing listener for $msg", null)
+        }
+        is DMessage.SubFailedRsp -> {
+          val onOpen = _pendingOpens.remove(msg.dbKey)
+          if (onOpen != null) onOpen.fail(Exception(msg.cause))
+          else reportError("Missing listener for $msg", null)
+        }
+        is DMessage.ServiceRsp -> {
+          val onRsp = _pendingCalls.remove(msg.reqId)
+          if (onRsp != null) onRsp.complete(msg.result)
+          else reportError("Missing listener for $msg", null)
+        }
+        is DMessage.EntityCreated -> onDb(msg.dbId, msg) { it.apply(msg) }
+        is DMessage.EntityDestroyed -> onDb(msg.dbId, msg) { it.apply(msg) }
+        is DMessage.PropChange -> onDb(msg.dbId, msg) { it.apply(msg) }
+        else -> reportError("Unknown message: $msg", null)
+      }
+    } catch (err :Throwable) {
+      reportError("Failure processing: $msg", err)
     }
-    is DMessage.SubFailedRsp -> {
-      val onOpen = _pendingOpens.remove(msg.dbKey)
-      if (onOpen != null) onOpen.fail(Exception(msg.cause))
-      else reportError("Missing listener for $msg", null)
-    }
-    is DMessage.ServiceRsp -> {
-      val onRsp = _pendingCalls.remove(msg.reqId)
-      if (onRsp != null) onRsp.complete(msg.result)
-      else reportError("Missing listener for $msg", null)
-    }
-    is DMessage.EntityCreated -> onDb(msg.dbId, msg) { it.apply(msg) }
-    is DMessage.EntityDestroyed -> onDb(msg.dbId, msg) { it.apply(msg) }
-    is DMessage.PropChange -> onDb(msg.dbId, msg) { it.apply(msg) }
-    else -> reportError("Unknown message: $msg", null)
   }
 
   private inline fun onDb (dbId :Int, msg :DMessage, op :(DDBImpl) -> Unit) {

@@ -60,6 +60,8 @@ abstract class DEntity (val id :Long) : DReactor() {
 
       abstract fun read (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) :Unit
       abstract fun write (pcol :DProtocol, buf :ByteBuffer, entity :DEntity) :Unit
+
+      override fun toString () = "${kprop.name}@$id"
     }
 
     /** Metadata for a simple value property. */
@@ -136,13 +138,20 @@ abstract class DEntity (val id :Long) : DReactor() {
     private var _conn = Closeable.Util.NOOP
   }
 
+  override fun toString () = "${meta.entityName}@$id"
+
   // implementation details, please to ignore
   fun _init (host :Host, szer :DEntitySerializer<*>) {
     _host = host
     _szer = uncheckedCast<DEntitySerializer<DEntity>>(szer)
   }
   internal fun apply (change :DMessage.PropChange) {
-    _szer.apply(this, change.propId, change.value)
+    assert(_szer != NoopSzer) { "Cannot apply $change to uninitialized entity $this" }
+    try {
+      _szer.apply(this, change.propId, change.value)
+    } catch (err :Throwable) {
+      throw RuntimeException("Failed to apply $change to $this", err)
+    }
   }
 
   private fun <T> emitChange (prop :Meta.Prop<T>, oldval :T, newval :T) {

@@ -22,6 +22,8 @@ abstract class DSerializer<T> (type :Class<*>) : DProtocol.Component(type) {
   fun put (pcol :DProtocol, buf :ByteBuffer, count :Int, iter :Iterator<T>) {
     var ii = 0 ; while (ii++ < count) put(pcol, buf, iter.next())
   }
+
+  override fun toString () = "DSzer[type=$type, id=$id]"
 }
 
 abstract class DEntitySerializer<T : DEntity> (type :Class<T>) : DSerializer<T>(type) {
@@ -32,7 +34,11 @@ abstract class DEntitySerializer<T : DEntity> (type :Class<T>) : DSerializer<T>(
   abstract val props :List<DEntity.Meta.Prop<*>>
 
   fun apply (ent :T, propId :Short, value :Any) {
-    uncheckedCast<DEntity.Meta.Prop<Any>>(_allProps[propId.toInt()]).kprop.set(ent, value)
+    try {
+      uncheckedCast<DEntity.Meta.Prop<Any>>(_allProps[propId.toInt()]).kprop.set(ent, value)
+    } catch (oob :IndexOutOfBoundsException) {
+      throw RuntimeException("$this has no metadata for prop @ id [ent=$ent, propId=$propId]")
+    }
   }
 
   override fun get (pcol :DProtocol, buf :ByteBuffer) :T {
@@ -51,6 +57,8 @@ abstract class DEntitySerializer<T : DEntity> (type :Class<T>) : DSerializer<T>(
     _allProps.addAll(props)
     var pid = 0 ; for (prop in _allProps) prop.id = (pid++).toShort()
   }
+
+  override fun toString () = "DEntSzer[type=$type, id=$id, props=$_allProps]"
 
   private val _allProps = ArrayList<DEntity.Meta.Prop<*>>()
 }

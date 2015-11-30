@@ -80,9 +80,16 @@ abstract class DMessage : DData {
   }
 
   /** Communicates entity creation. Server to client. */
-  class EntityCreated (val dbId :Int, val entity :DEntity) : DMessage()
+  class EntityCreated (val dbId :Int, val entity :DEntity) : DMessage() {
+    override fun toString () =
+      "EntityCreated(db=$dbId, ent=${entity.id}, ekind=${entity.meta.entityName})"
+  }
   /** Communicates entity destruction. Server to client. */
-  class EntityDestroyed (val dbId :Int, val entId :Long) : DMessage()
+  class EntityDestroyed (val dbId :Int, val entId :Long) : DMessage() {
+    override fun toString () = "EntityDestroyed(db=$dbId, ent=$entId)"
+  }
   /** Communicates an entity property change. Server to client. */
-  class PropChange (val dbId :Int, val entId :Long, val propId :Short, val value :Any) : DMessage()
+  class PropChange (val dbId :Int, val entId :Long, val propId :Short, val value :Any) : DMessage() {
+    override fun toString () = "PropChange(db=$dbId, ent=$entId, prop=$propId, value=$value)"
+  }
 }

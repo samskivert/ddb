@@ -65,9 +65,9 @@ abstract class DEntitySerializer<T : DEntity> (type :Class<T>) : DSerializer<T>(
 
 object DSerializers {
 
-  val VoidS = object : DSerializer<Any>(Any::class.java) {
-    override fun get (pcol :DProtocol, buf :ByteBuffer) :Any = throw AssertionError()
-    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :Any) {}
+  val UnitS = object : DSerializer<Unit>(Unit::class.java) {
+    override fun get (pcol :DProtocol, buf :ByteBuffer) :Unit = Unit
+    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :Unit) {}
   }
 
   val BooleanS = object : DSerializer<Boolean>(Boolean::class.java) {
@@ -207,7 +207,7 @@ object DSerializers {
 
   // TODO: do we want other concrete list/map types?
 
-  val Defaults = arrayOf(VoidS, BooleanS, JBooleanS, ByteS, JByteS, CharS, JCharS, ShortS, JShortS,
-                         IntS, JIntS, LongS, JLongS, FloatS, JFloatS, DoubleS, JDoubleS, StringS,
-                         ClassS, ListS, MapS)
+  val Defaults = arrayOf(UnitS, BooleanS, JBooleanS, ByteS, JByteS, CharS, JCharS, ShortS, JShortS,
+                         IntS, JIntS, LongS, JLongS, FloatS, JFloatS, DoubleS, JDoubleS,
+                         StringS, ClassS, ListS, MapS)
 }

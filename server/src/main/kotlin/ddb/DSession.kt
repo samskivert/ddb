@@ -32,15 +32,6 @@ abstract class DSession (val server :DServer) {
     val currentOrNull :DSession?
       get () = threadSession.get()
 
-    /** Returns the state instance identified by `clazz` registered for the current session, or
-      * null if nothing is registered for `clazz`.
-      * @throws IllegalStateException if no session is currently bound. */
-    fun <T:Any> state (clazz :KClass<T>) :T? = current.state(clazz)
-
-    /** Sets the state instance identified by `clazz` to `value` for the current session.
-      * @throws IllegalStateException if no session is currently bound. */
-    fun <T:Any> setState (clazz :KClass<T>, value :T) { current.setState(clazz, value) }
-
     /** Contains a reference to currently active session, if any. */
     val threadSession = ThreadLocal<DSession>()
   }
@@ -59,8 +50,11 @@ abstract class DSession (val server :DServer) {
     finally { threadSession.set(null) }
   }
 
+  /** Returns the state instance identified by `clazz`, or excepts. */
+  fun <T:Any> state (clazz :KClass<T>) :T = uncheckedCast<T>(
+    _state[clazz] ?: throw IllegalStateException("No instance registered for $clazz"))
   /** Returns the state instance identified by `clazz`, or null. */
-  fun <T:Any> state (clazz :KClass<T>) :T? = uncheckedNullCast<T>(_state[clazz])
+  fun <T:Any> checkState (clazz :KClass<T>) :T? = uncheckedNullCast<T>(_state[clazz])
   /** Sets the state instance identified by `clazz` to `value`. */
   fun <T:Any> setState (clazz :KClass<T>, value :T) { _state[clazz] = value }
 

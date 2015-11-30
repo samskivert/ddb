@@ -71,6 +71,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   override fun destroy (entity :DEntity) {
     if (_entities.remove(entity.id) != null) {
       etable(entity.meta).remove(entity.id)
+      notifySubs(DMessage.EntityDestroyed(id, entity.id))
       entityDestroyed.emit(entity)
     }
   }
@@ -89,10 +90,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
 
   // from DEntity.Host
   override fun onChange (entity :DEntity, propId :Short, value :Any) {
-    // turn this message into a blob of bytes
-    val buf = DMessage.PropChange(id, entity.id, propId, value).flatten(server.proto)
-    // send those bytes to all of our subscribers
-    for (sess in _subscribers) sess.send(buf)
+    notifySubs(DMessage.PropChange(id, entity.id, propId, value))
   }
 
   /** Schedules the next operation in this context on our executor. */
@@ -102,10 +100,24 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
     if (active != null) server.exec.execute(active)
   }
 
+  private fun notifySubs (msg :DMessage) {
+    // turn this message into a blob of bytes
+    val buf = msg.flatten(server.proto)
+    // send those bytes to all of our subscribers
+    for (sess in _subscribers) sess.send(buf)
+  }
+
   private fun processCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<out Any>>) {
     val disp = _dispatchers[msg.svcId]
-    if (disp != null) disp.dispatch(msg).onComplete(onRsp)
-    else onRsp.onEmit(Try.failure(Exception("Unknown service: $msg")))
+    try {
+      if (disp != null) disp.dispatch(msg).onComplete(onRsp)
+      else onRsp.onEmit(Try.failure(Exception("Unknown service: $msg")))
+    } catch (err :DService.ServiceException) {
+      onRsp.onEmit(Try.failure(err))
+    } catch (err :Throwable) {
+      onRsp.onEmit(Try.failure(Exception("Error: server lost marbles")))
+      throw err
+    }
   }
 
   private fun processSubscribe (sess :DSession) {
@@ -116,11 +128,12 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
     _subscribers -= sess
   }
 
-  private fun <E : DEntity> create (emeta :DEntity.Meta<E>, id :Long, init :(E) -> Unit) :E {
-    val entity = emeta.create(id)
-    init(entity)
+  private fun <E : DEntity> create (emeta :DEntity.Meta<E>, eid :Long, einit :(E) -> Unit) :E {
+    val entity = emeta.create(eid)
+    einit(entity)
     entity._init(this, server.proto.entitySerializer(entity.javaClass))
     map(emeta, entity)
+    notifySubs(DMessage.EntityCreated(id, entity))
     entityCreated.emit(entity)
     return entity
   }

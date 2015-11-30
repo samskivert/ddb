@@ -79,6 +79,10 @@ abstract class DMessage : DData {
       get () = Try.failure(Exception(cause))
   }
 
+  /** Communicates entity creation. Server to client. */
+  class EntityCreated (val dbId :Int, val entity :DEntity) : DMessage()
+  /** Communicates entity destruction. Server to client. */
+  class EntityDestroyed (val dbId :Int, val entId :Long) : DMessage()
   /** Communicates an entity property change. Server to client. */
   class PropChange (val dbId :Int, val entId :Long, val propId :Short, val value :Any) : DMessage()
 }

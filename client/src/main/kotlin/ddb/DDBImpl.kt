@@ -35,10 +35,19 @@ class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey
     //   "[ent=$entity, pid=$propId, val=$value]")
   }
 
+  internal fun apply (msg :DMessage.EntityCreated) {
+    _entities[msg.entity.id] = msg.entity
+    entityCreated.emit(msg.entity)
+  }
+  internal fun apply (msg :DMessage.EntityDestroyed) {
+    val entity = _entities.remove(msg.entId)
+    if (entity == null) client.reportError("$this got destroyed for unknown entity: $msg", null)
+    else entityDestroyed.emit(entity)
+  }
   internal fun apply (msg :DMessage.PropChange) {
     val ent = _entities[msg.entId]
     if (ent != null) ent.apply(msg)
-    else client.reportError("Missing entity for $msg", null)
+    else client.reportError("$this missing entity for $msg", null)
   }
 
   private fun <E : DEntity> etable (emeta :DEntity.Meta<E>) :MutableMap<Long,E> {

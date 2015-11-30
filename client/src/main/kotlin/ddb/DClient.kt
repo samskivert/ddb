@@ -74,12 +74,16 @@ abstract class DClient {
       if (onRsp != null) onRsp.complete(msg.result)
       else reportError("Missing listener for $msg", null)
     }
-    is DMessage.PropChange -> {
-      val ddb = _dbsById[msg.dbId]
-      if (ddb != null) ddb.apply(msg)
-      else reportError("Got PropChange for unknown db $msg", null)
-    }
+    is DMessage.EntityCreated -> onDb(msg.dbId, msg) { it.apply(msg) }
+    is DMessage.EntityDestroyed -> onDb(msg.dbId, msg) { it.apply(msg) }
+    is DMessage.PropChange -> onDb(msg.dbId, msg) { it.apply(msg) }
     else -> reportError("Unknown message: $msg", null)
+  }
+
+  private inline fun onDb (dbId :Int, msg :DMessage, op :(DDBImpl) -> Unit) {
+    val ddb = _dbsById[dbId]
+    if (ddb != null) op(ddb)
+    else reportError("Got message for unknown db: $msg", null)
   }
 
   private val _dbsByKey = hashMapOf<String,DDBImpl>()

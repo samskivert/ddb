@@ -11,7 +11,6 @@ import org.eclipse.jetty.websocket.servlet.*
 class DJettyServlet (val server :DServer) : WebSocketServlet() {
 
   override fun configure (factory :WebSocketServletFactory) {
-    factory.policy.setIdleTimeout(10000)
     factory.creator = object : WebSocketCreator {
       override fun createWebSocket (req :ServletUpgradeRequest, rsp :ServletUpgradeResponse) =
         WSSession(server)

@@ -56,7 +56,7 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
     // from WebSocketListener
     override fun onWebSocketClose (statusCode :Int, reason :String) {
       // TODO: interpret statusCode?
-      onClose.emit(this)
+      onClose()
     }
 
     // from WebSocketListener
@@ -76,10 +76,8 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
 
     override fun toString () = "addr=$ipaddr"
 
-    private fun onError (mode :String, cause :Throwable) {
-      server.onErr.report("Session failure [$this, mode=$mode]", cause)
-      onError.emit(cause)
-      onClose.emit(this)
+    override protected fun onError (mode :String, cause :Throwable) {
+      super.onError(mode, cause)
       try {
         websess!!.disconnect()
       } catch (ioe :IOException) {

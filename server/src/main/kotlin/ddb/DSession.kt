@@ -90,5 +90,15 @@ abstract class DSession (val server :DServer) {
     }
   }
 
+  protected open fun onClose () {
+    onClose.emit(this)
+  }
+
+  protected open fun onError (mode :String, cause :Throwable) {
+    server.onErr.report("Session failure [$this, mode=$mode]", cause)
+    onError.emit(cause)
+    onClose()
+  }
+
   private val _state = ConcurrentHashMap<KClass<*>,Any>()
 }

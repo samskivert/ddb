@@ -104,7 +104,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
     // turn this message into a blob of bytes
     val buf = msg.flatten(server.proto)
     // send those bytes to all of our subscribers
-    for (sess in _subscribers) sess.send(buf)
+    for (sess in _subscribers.keys) sess.send(buf)
   }
 
   private fun processCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<out Any>>) {
@@ -122,10 +122,13 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
 
   private fun processSubscribe (sess :DSession) {
     sess.send(DMessage.SubscribedRsp(key, id, _entities.values, _services.keys))
-    _subscribers += sess
+    // if this session closes without unsubscribing, clean it up
+    val closer = sess.onClose.connect { unsubscribe(it) }
+    _subscribers.put(sess, closer)
   }
   private fun processUnsubscribe (sess :DSession) {
-    _subscribers -= sess
+    // close the connection we made earlier to auto-unsubscribe this session on premature closure
+    _subscribers.remove(sess)?.let { it.close() }
   }
 
   private fun <E : DEntity> create (emeta :DEntity.Meta<E>, eid :Long, einit :(E) -> Unit) :E {
@@ -154,7 +157,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
 
   private val _services = hashMapOf<Class<*>,Short>()
   private val _dispatchers = hashMapOf<Short,DService.Dispatcher>()
-  private val _subscribers = arrayListOf<DSession>()
+  private val _subscribers = hashMapOf<DSession,Closeable>()
 
   private val _ops = ArrayDeque<Runnable>()
   private var _active :Runnable? = null

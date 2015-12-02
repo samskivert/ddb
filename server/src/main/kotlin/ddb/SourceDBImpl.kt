@@ -103,8 +103,10 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   private fun notifySubs (msg :DMessage) {
     // turn this message into a blob of bytes
     val buf = msg.flatten(server.proto)
-    // send those bytes to all of our subscribers
-    for (sess in _subscribers.keys) sess.send(buf)
+    // send those bytes to all of our subscribers (the call to asReadOnlyBuffer creates a shallow
+    // copy of the buffer for use by each subscriber, otherwise their positions/limits/etc would
+    // conflict)
+    for (sess in _subscribers.keys) sess.send(buf.asReadOnlyBuffer())
   }
 
   private fun processCall (msg :DMessage.ServiceReq, onRsp :SignalView.Listener<Try<out Any>>) {

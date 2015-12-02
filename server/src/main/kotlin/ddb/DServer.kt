@@ -16,9 +16,12 @@ import ddb.util.*
  */
 abstract class DServer (val exec :Executor) {
 
-  /** Used to report errors. */
-  val onErr = object : ErrorReporter {
-    override fun report (msg :String, err :Throwable?) {
+  /** Used to log info & errors. */
+  val log = object : Logger {
+    override fun info (msg :String) {
+      System.err.println(msg)
+    }
+    override fun error (msg :String, err :Throwable?) {
       System.err.println(msg)
       if (err != null) err.printStackTrace(System.err)
     }

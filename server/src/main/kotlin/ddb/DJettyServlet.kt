@@ -41,7 +41,7 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
     // from DSession
     override fun send (msg :ByteBuffer) {
       if (websess!!.isOpen()) endpoint!!.sendBytes(msg, writeCB)
-      else server.onErr.report("Dropping message to closed WebSocket [$this, msg=$msg]", null);
+      else server.log.error("Dropping message to closed WebSocket [$this, msg=$msg]", null);
     }
 
     // from WebSocketListener
@@ -50,6 +50,7 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
       endpoint = websess.remote
       ipaddr = websess.remoteAddress.toString()
       this.websess = websess
+      onOpen()
     }
 
     // from WebSocketListener
@@ -65,7 +66,7 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
 
     // from WebSocketListener
     override fun onWebSocketText (text :String) {
-      server.onErr.report("Got text message? [$this, text=$text]", null)
+      server.log.error("Got text message? [$this, text=$text]", null)
     }
 
     // from WebSocketListener
@@ -80,7 +81,7 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
       try {
         websess!!.disconnect()
       } catch (ioe :IOException) {
-        server.onErr.report("Session.disconnect() failure [$this]", ioe)
+        server.log.error("Session.disconnect() failure [$this]", ioe)
       }
     }
   }

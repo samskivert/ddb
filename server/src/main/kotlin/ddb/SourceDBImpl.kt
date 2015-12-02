@@ -69,7 +69,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
         current.set(this)
         op()
       } catch (t :Throwable) {
-        server.onErr.report("Entity operation failed: $op", t)
+        server.log.error("Entity operation failed: $op", t)
       } finally {
         current.set(null)
         scheduleNext()

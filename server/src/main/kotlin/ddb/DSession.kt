@@ -84,18 +84,23 @@ abstract class DSession (val server :DServer) {
     try {
       val msg = buf.getTagged<Any>(server.proto)
       if (msg is DMessage) server.dispatch(msg, this)
-      else server.onErr.report("Got unknown message from client [$this, msg=$msg]", null)
+      else server.log.error("Got unknown message from client [$this, msg=$msg]", null)
     } catch (t :Throwable) {
-      server.onErr.report("WebSocket decode failure [$this, buf=$buf]", t);
+      server.log.error("WebSocket decode failure [$this, buf=$buf]", t);
     }
   }
 
+  protected open fun onOpen () {
+    server.log.info("Session opened [$this]")
+  }
+
   protected open fun onClose () {
+    server.log.info("Session closed [$this]")
     onClose.emit(this)
   }
 
   protected open fun onError (mode :String, cause :Throwable) {
-    server.onErr.report("Session failure [$this, mode=$mode]", cause)
+    server.log.error("Session failure [$this, mode=$mode]", cause)
     onError.emit(cause)
     onClose()
   }

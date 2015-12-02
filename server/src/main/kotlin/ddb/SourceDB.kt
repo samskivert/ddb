@@ -33,6 +33,10 @@ abstract class SourceDB (key :String, id :Int) : DDB(key, id), DService.Host, DE
   /** Destroys this database. */
   abstract fun destroy () :Unit
 
+  /** Queues the supplied operation for execution on this DDB's single-threaded execution context.
+    * The op will be run as soon as all other operations queued on this DDB have completed. */
+  abstract fun postOp (op :() -> Unit) :Unit
+
   override fun <S : DService> service (sclass :Class<S>) :S =
     throw UnsupportedOperationException("Use service(sclass, recv) on the server.")
 }

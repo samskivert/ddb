@@ -27,23 +27,6 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
     }})
   }
 
-  /** Queues the supplied operation for execution on this DDB's single-threaded execution context.
-    * The op will be run as soon as all other operations queued on this DDB have completed. */
-  fun postOp (op :() -> Unit) :Unit = synchronized(this) {
-    _ops.offer(Runnable {
-      try {
-        current.set(this)
-        op()
-      } catch (t :Throwable) {
-        server.onErr.report("Entity operation failed: $op", t)
-      } finally {
-        current.set(null)
-        scheduleNext()
-      }
-    })
-    if (_active == null) scheduleNext()
-  }
-
   // TODO: bulk registry of entities loaded from persistent store
   // TODO: how to tell storage that an entity changed and should be saved, ditto deleted?
 
@@ -79,6 +62,20 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
   override fun destroy () {
     server.closeDB(this)
     server.storage.destroyDB(key)
+  }
+  override fun postOp (op :() -> Unit) :Unit = synchronized(this) {
+    _ops.offer(Runnable {
+      try {
+        current.set(this)
+        op()
+      } catch (t :Throwable) {
+        server.onErr.report("Entity operation failed: $op", t)
+      } finally {
+        current.set(null)
+        scheduleNext()
+      }
+    })
+    if (_active == null) scheduleNext()
   }
 
   // from DService.Host

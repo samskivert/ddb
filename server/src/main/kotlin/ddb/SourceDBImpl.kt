@@ -83,7 +83,7 @@ abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : Source
 
   // from DService.Host
   override fun nextReqId () = TODO()
-  // from DService.Host
+  override fun <T> promise () = RPromise.create<T>() // TODO: safe promise here too?
   override fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) {
     postOp({ processCall(msg, onRsp.completer()) })
   }

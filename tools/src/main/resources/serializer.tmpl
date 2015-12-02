@@ -49,7 +49,7 @@
       override fun marshaller (host :DService.Host) = object : DService.Marshaller<{{typeName}}>(id), {{typeName}} {
         {{#methods}}
         override fun {{methName}} ({{#args}}{{name}} :{{type}}{{^-last}}, {{/-last}}{{/args}}) :RFuture<{{returnType}}> {
-          val result = RPromise.create<{{returnType}}>()
+          val result = host.promise<{{returnType}}>()
           host.call(DMessage.ServiceReq(host.id, svcId, {{-index}}, host.nextReqId(), listOf({{#args}}{{name}}{{^-last}}, {{/-last}}{{/args}})), result)
           return result
         }

@@ -20,7 +20,7 @@ class DDBImpl (val client :DClient, rsp :DMessage.SubscribedRsp) : DDB(rsp.dbKey
 
   // from DService.Host
   override fun nextReqId () = client.nextReqId()
-  // from DService.Host
+  override fun <T> promise () = client.safePromise<T>()
   override fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) =
     client.sendCall(msg, onRsp)
 

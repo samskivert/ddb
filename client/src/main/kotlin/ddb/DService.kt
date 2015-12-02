@@ -44,10 +44,10 @@ interface DService {
   interface Host {
     /** The id of the DDB that's hosting this service. */
     val id :Int
-
     /** Returns an id to use for a service request to this host. */
     fun nextReqId () :Int
-
+    /** Creates a promise for use by a service call. */
+    fun <T> promise () :RPromise<T>
     /** Processes the [DService] call in `msg`, reporting success or failure to `onRsp`. */
     fun call (msg :DMessage.ServiceReq, onRsp :RPromise<out Any>) :Unit
   }

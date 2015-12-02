@@ -58,9 +58,12 @@ class DDBTest {
       println(msg)
       if (err != null) err.printStackTrace(System.out)
     }
-    override fun send (msg :DMessage) {
-      server.dispatch(msg, session)
-    }
+    override protected fun openSession () = RFuture.success<Session>(object : Session () {
+      override fun send (msg :DMessage) {
+        server.dispatch(msg, session)
+      }
+      override fun close () {} // noop!
+    })
   }
 
   @Test fun testServerCRUD () {

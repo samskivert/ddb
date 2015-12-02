@@ -74,12 +74,12 @@ class TestProtocol : DProtocol(12) {
     register(object : DService.Factory<ddb.DDBTest.TestService>(ddb.DDBTest.TestService::class.java) {
       override fun marshaller (host :DService.Host) = object : DService.Marshaller<ddb.DDBTest.TestService>(id), ddb.DDBTest.TestService {
         override fun longest (names :List<String>) :RFuture<String> {
-          val result = RPromise.create<String>()
+          val result = host.promise<String>()
           host.call(DMessage.ServiceReq(host.id, svcId, 1, host.nextReqId(), listOf(names)), result)
           return result
         }
         override fun lookup (map :Map<Int,List<String>>, key :Int) :RFuture<List<String>> {
-          val result = RPromise.create<List<String>>()
+          val result = host.promise<List<String>>()
           host.call(DMessage.ServiceReq(host.id, svcId, 2, host.nextReqId(), listOf(map, key)), result)
           return result
         }

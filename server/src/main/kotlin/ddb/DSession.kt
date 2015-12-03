@@ -94,15 +94,15 @@ abstract class DSession (val server :DServer) {
     server.log.info("Session opened [$this]")
   }
 
-  protected open fun onClose () {
-    server.log.info("Session closed [$this]")
-    onClose.emit(this)
-  }
-
   protected open fun onError (mode :String, cause :Throwable) {
     server.log.error("Session failure [$this, mode=$mode]", cause)
     onError.emit(cause)
-    onClose()
+  }
+
+  protected open fun onClose (info :String) {
+    val sepinfo = if (info == "") "" else ", $info"
+    server.log.info("Session closed [$this$sepinfo]")
+    onClose.emit(this)
   }
 
   private val _state = ConcurrentHashMap<KClass<*>,Any>()

@@ -4,6 +4,7 @@
 package ddb
 
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import org.eclipse.jetty.websocket.api.*
 import org.eclipse.jetty.websocket.servlet.*
@@ -55,13 +56,15 @@ class DJettyServlet (val server :DServer) : WebSocketServlet() {
 
     // from WebSocketListener
     override fun onWebSocketClose (statusCode :Int, reason :String) {
-      // TODO: interpret statusCode?
-      onClose()
+      onClose("status=$statusCode, reason=$reason")
     }
 
     // from WebSocketListener
     override fun onWebSocketError (cause :Throwable) {
-      onError("read", cause)
+      // if the session just timed out, no need to report error, just let it be closed
+      if (cause !is SocketTimeoutException) {
+        onError("read", cause)
+      }
     }
 
     // from WebSocketListener

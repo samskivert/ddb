@@ -102,6 +102,10 @@ abstract class DEntity (val id :Long) : DReactor() {
   /** Returns a reference to this entity's meta singleton. */
   abstract val meta :Meta<DEntity>
 
+  /** Returns the list of all properties in this entity (including supertypes). */
+  val props :List<Meta.Prop<*>>
+    get () = _szer.allProps
+
   /** Registers `fn` to be called when `prop` changes. */
   fun <T> onEmit (prop :Meta.Prop<T>, fn :(T) -> Unit) :Connection {
     return addCons(object : Cons(this) {

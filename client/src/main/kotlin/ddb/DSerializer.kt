@@ -31,7 +31,10 @@ abstract class DEntitySerializer<T : DEntity> (type :Class<T>) : DSerializer<T>(
   open fun create (id :Long) :T = throw UnsupportedOperationException("Can't create abstract $type")
   open val parent :Class<out DEntity>?
     get () = null
+
   abstract val props :List<DEntity.Meta.Prop<*>>
+  val allProps :List<DEntity.Meta.Prop<*>>
+    get () = _allProps
 
   fun apply (ent :T, propId :Short, value :Any) {
     try {

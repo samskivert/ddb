@@ -142,7 +142,15 @@ abstract class DEntity (val id :Long) : DReactor() {
     private var _conn = Closeable.Util.NOOP
   }
 
-  override fun toString () = "${meta.entityName}@$id"
+  override fun toString () :String {
+    val sb = StringBuilder().append(meta.entityName).append("@").append(id).append("[")
+    var ii = 0 ; val ll = props.size ; while (ii < ll) {
+      if (ii > 0) sb.append(", ")
+      val kprop = props[ii].kprop
+      sb.append(kprop.name).append("=").append(kprop.get(this))
+    }
+    return sb.append("]").toString()
+  }
 
   // implementation details, please to ignore
   fun _init (host :Host, szer :DEntitySerializer<*>) {

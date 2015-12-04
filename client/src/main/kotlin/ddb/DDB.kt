@@ -42,4 +42,6 @@ abstract class DDB (val key :String, val id :Int) {
   /** Resolves and returns the service with class `sclass`.
     * @throws IllegalArgumentException if no provider for `sclass` is registered with this ddb. */
   abstract fun <S : DService> service (sclass :Class<S>) :S
+
+  override fun toString () = "DDB[key=$key, id=$id]"
 }

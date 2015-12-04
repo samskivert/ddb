@@ -39,7 +39,10 @@ abstract class DServer (val exec :Executor) {
   /** Opens the database identified by `key`, resolving it from persistent storage if necessary. */
   fun openDB (key :String) :SourceDB = _dbsByKey.get(key)
 
-  /** Returns the database with `id` or null. */
+  /** Returns the database identified by `key` or null. */
+  fun getDB (key :String) :SourceDB? = _dbsByKey.getIfPresent(key)
+
+  /** Returns the database with id `id` or null. */
   fun getDB (id :Int) :SourceDB? = _dbsById[id]
 
   internal fun closeDB (ddb :SourceDB) {
@@ -49,8 +52,16 @@ abstract class DServer (val exec :Executor) {
 
   // this should be internal but then I can't use it in test code, blah
   /*internal*/ fun dispatch (dmsg :DMessage, session :DSession) { when (dmsg) {
-    is DMessage.SubscribeReq -> _dbsByKey[dmsg.dbKey]?.subscribe(session)
-    is DMessage.ServiceReq   -> _dbsById[dmsg.dbId]?.call(dmsg, session)
+    is DMessage.SubscribeReq -> {
+      val db = _dbsByKey.getIfPresent(dmsg.dbKey)
+      if (db != null) db.subscribe(session)
+      else session.send(DMessage.SubFailedRsp(dmsg.dbKey, "e.no_such_ddb"))
+    }
+    is DMessage.ServiceReq   -> {
+      val db = _dbsById[dmsg.dbId]
+      if (db != null) db.call(dmsg, session)
+      else session.send(DMessage.FailedRsp(dmsg.reqId, "e.no_such_ddb"))
+    }
   }}
 
   private val _nextServiceId = AtomicInteger(1)

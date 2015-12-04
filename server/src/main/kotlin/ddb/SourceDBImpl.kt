@@ -8,7 +8,7 @@ import java.util.HashMap
 import react.*
 import ddb.util.*
 
-abstract class SourceDBImpl (key :String, id :Int, val server :DServer) : SourceDB(key, id) {
+class SourceDBImpl (key :String, id :Int, val server :DServer) : SourceDB(key, id) {
 
   companion object {
     /** Contains a reference to the currently executing SourceDB. */

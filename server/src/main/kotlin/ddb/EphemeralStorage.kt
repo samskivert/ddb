@@ -12,9 +12,11 @@ import react.RFuture
  */
 class EphemeralStorage (val server :DServer) : DStorage() {
 
-  override fun openDB (key :String, id :Int) = EphemeralDDB(key, id, server)
-  override fun destroyDB (key :String) {} // nothing needed
-
-  class EphemeralDDB (key :String, id :Int, server :DServer) : SourceDBImpl(key, id, server) {
+  override fun openDB (key :String, id :Int) :SourceDBImpl {
+    server.log.info("Creating DDB [key=$key, id=$id]")
+    return SourceDBImpl(key, id, server)
+  }
+  override fun destroyDB (key :String) {
+    server.log.info("Destroying DDB [key=$key]")
   }
 }

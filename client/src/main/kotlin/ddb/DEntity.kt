@@ -144,7 +144,7 @@ abstract class DEntity (val id :Long) : DReactor() {
 
   override fun toString () :String {
     val sb = StringBuilder().append(meta.entityName).append("@").append(id).append("[")
-    var ii = 0 ; val ll = props.size ; while (ii < ll) {
+    for (ii in props.indices) {
       if (ii > 0) sb.append(", ")
       val kprop = props[ii].kprop
       sb.append(kprop.name).append("=").append(kprop.get(this))

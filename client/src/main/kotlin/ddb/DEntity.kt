@@ -160,15 +160,28 @@ abstract class DEntity (val id :Long) : DReactor() {
   internal fun apply (change :DMessage.PropChange) {
     assert(_szer != NoopSzer) { "Cannot apply $change to uninitialized entity $this" }
     try {
+      _applying = true
       _szer.apply(this, change.propId, change.value)
     } catch (err :Throwable) {
       throw RuntimeException("Failed to apply $change to $this", err)
+    } finally {
+      // we still clear _applying here even though _applying is normally cleared out in emitChange()
+      // because we might some day reinstate the React behavior where setting a reactive value to
+      // the same value does not trigger a notification (in which case emitChange won't be called)
+      _applying = false
     }
   }
 
   private fun <T> emitChange (prop :Meta.Prop<T>, oldval :T, newval :T) {
-    _host.onChange(this, prop.id, newval as Any)
-    notify(prop, newval, oldval as Any)
+    // if we're not applying a change that came in over the network, forward this change to our
+    // host; if we *are* applying a change that came in over the network we want to clear out our
+    // _applying flag before we call notify() because it's possible that during notification, some
+    // other change will be made to this entity which we need to pass on to our host, so we can't
+    // wait until control returns to the apply() call above to clear out _applying
+    val anewval = newval as Any
+    if (!_applying) _host.onChange(this, prop.id, anewval)
+    else _applying = false
+    notify(prop, anewval, oldval as Any)
   }
 
   private fun areEqual (prop0 :KProperty<*>, prop1 :KProperty<*>) :Boolean =
@@ -176,6 +189,7 @@ abstract class DEntity (val id :Long) : DReactor() {
 
   private var _host = NoopHost
   private var _szer = NoopSzer
+  private var _applying = false
 
   companion object {
     val NoopHost = object : Host {

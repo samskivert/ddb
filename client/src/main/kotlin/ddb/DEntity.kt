@@ -157,7 +157,7 @@ abstract class DEntity (val id :Long) : DReactor() {
     _host = host
     _szer = uncheckedCast<DEntitySerializer<DEntity>>(szer)
   }
-  internal fun apply (change :DMessage.PropChange) {
+  fun _apply (change :DMessage.PropChange) {
     assert(_szer != NoopSzer) { "Cannot apply $change to uninitialized entity $this" }
     try {
       _applying = true

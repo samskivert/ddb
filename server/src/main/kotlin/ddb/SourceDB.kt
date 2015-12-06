@@ -8,6 +8,19 @@ package ddb
   */
 abstract class SourceDB (key :String, id :Int) : DDB(key, id), DService.Host, DEntity.Host {
 
+  /** Defines access control for entities of type `E`. */
+  interface AccessControl<E : DEntity> {
+    /** Returns true if the client `sess` can change a property of `entity`. */
+    fun canChange (entity :E, sess :DSession) :Boolean
+  }
+
+  companion object {
+    /* The default access control policy is that no client can modify any entity. */
+    val DefaultAccessControl = object : AccessControl<DEntity> {
+      override fun canChange (entitiy :DEntity, sess :DSession) = false
+    }
+  }
+
   /** Registers `service` as the provider of `S` in this ddb. */
   abstract fun <S : DService> register (sclass :Class<S>, service :S) :Unit
 
@@ -21,8 +34,10 @@ abstract class SourceDB (key :String, id :Int) : DDB(key, id), DService.Host, DE
     * @param init a function that will be called to initialize the entity before it is announced
     * to the world via [entityCreated].
     * @return the newly recreated entity. */
-  abstract fun <E : DEntity> recreate (id :Long, emeta :DEntity.Meta<E>,
-                                             init :(E) -> Unit) :E
+  abstract fun <E : DEntity> recreate (id :Long, emeta :DEntity.Meta<E>, init :(E) -> Unit) :E
+
+  /** Configures the access control policy for `emeta` entities. */
+  abstract fun <E : DEntity> setAccessControl (emeta :DEntity.Meta<E>, ac :AccessControl<E>) :Unit
 
   /** Destroys `entity`, removing it from the database. */
   abstract fun destroy (entity :DEntity)

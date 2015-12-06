@@ -88,8 +88,9 @@ abstract class DMessage : DData {
   class EntityDestroyed (val dbId :Int, val entId :Long) : DMessage() {
     override fun toString () = "EntityDestroyed(db=$dbId, ent=$entId)"
   }
-  /** Communicates an entity property change. Server to client. */
-  class PropChange (val dbId :Int, val entId :Long, val propId :Short, val value :Any) : DMessage() {
+  /** Communicates an entity property change. Server to client and client to server. */
+  class PropChange (val dbId :Int, val entId :Long, val propId :Short,
+                    val value :Any) : DMessage() {
     override fun toString () = "PropChange(db=$dbId, ent=$entId, prop=$propId, value=$value)"
   }
 }

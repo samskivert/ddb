@@ -27,6 +27,13 @@ class SourceDBImpl (key :String, id :Int, val server :DServer) : SourceDB(key, i
     }})
   }
 
+  /** Processes a property change request from a client session. */
+  fun change (msg :DMessage.PropChange, session :DSession) {
+    postOp({ session.runBound {
+      processChange(msg, session)
+    }})
+  }
+
   // TODO: bulk registry of entities loaded from persistent store
   // TODO: how to tell storage that an entity changed and should be saved, ditto deleted?
 
@@ -50,6 +57,10 @@ class SourceDBImpl (key :String, id :Int, val server :DServer) : SourceDB(key, i
   override fun <E : DEntity> recreate (id :Long, emeta :DEntity.Meta<E>, init :(E) -> Unit) :E {
     _entities[id].ifExists { destroy(it) }
     return create(emeta, id, init)
+  }
+  override fun <E : DEntity> setAccessControl (emeta :DEntity.Meta<E>, ac :AccessControl<E>) {
+    val old = _acls.put(emeta, ac)
+    if (old != null) server.log.error("Overwrote ACL [emeta=$emeta, new=$ac, old=$old]", null)
   }
   override fun destroy (entity :DEntity) {
     if (_entities.remove(entity.id) != null) {
@@ -119,6 +130,18 @@ class SourceDBImpl (key :String, id :Int, val server :DServer) : SourceDB(key, i
     }
   }
 
+  private fun processChange (msg :DMessage.PropChange, sess :DSession) {
+    val ent = _entities[msg.entId]
+    if (ent == null) server.log.error(
+      "$this missing entity for prop change [msg=$msg, from=$sess]", null)
+    else {
+      val ac = uncheckedCast<AccessControl<DEntity>>(_acls[ent.meta] ?: DefaultAccessControl)
+      if (!ac.canChange(ent, sess)) server.log.error(
+        "$this rejecting illegal prop change [msg=$msg, from=$sess]", null)
+      else ent._apply(msg)
+    }
+  }
+
   private fun processSubscribe (sess :DSession) {
     sess.send(DMessage.SubscribedRsp(key, id, _entities.values, _services.keys))
     // if this session closes without unsubscribing, clean it up
@@ -152,6 +175,7 @@ class SourceDBImpl (key :String, id :Int, val server :DServer) : SourceDB(key, i
 
   private val _entities = hashMapOf<Long,DEntity>()
   private val _byType = hashMapOf<String,HashMap<Long,DEntity>>()
+  private val _acls = hashMapOf<DEntity.Meta<*>,AccessControl<*>>()
   private var _nextId = 1L
 
   private val _services = hashMapOf<Class<*>,Short>()

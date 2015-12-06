@@ -62,6 +62,11 @@ abstract class DServer (val exec :Executor) {
       if (db != null) db.call(dmsg, session)
       else session.send(DMessage.FailedRsp(dmsg.reqId, "e.no_such_ddb"))
     }
+    is DMessage.PropChange   -> {
+      val db = _dbsById[dmsg.dbId]
+      if (db != null) db.change(dmsg, session)
+      else log.error("Dropping prop change on unknown db [msg=$dmsg, from=$session]", null)
+    }
   }}
 
   private val _nextServiceId = AtomicInteger(1)

@@ -76,6 +76,12 @@ abstract class DClient {
     }
   }
 
+  internal fun sendMsg (msg :DMessage) {
+    val sess = _session
+    if (sess == null) reportError("No active session, can't send $msg", null)
+    else sess.send(msg)
+  }
+
   internal fun <T> safePromise () :RPromise<T> = object : RPromise<T>() {
     override fun complete (result :Try<T>) {
       try {

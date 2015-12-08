@@ -17,7 +17,7 @@ abstract class SourceDB (key :String, id :Int) : DDB(key, id), DService.Host, DE
   companion object {
     /* The default access control policy is that no client can modify any entity. */
     val DefaultAccessControl = object : AccessControl<DEntity> {
-      override fun canChange (entitiy :DEntity, sess :DSession) = false
+      override fun canChange (entity :DEntity, sess :DSession) = false
     }
   }
 

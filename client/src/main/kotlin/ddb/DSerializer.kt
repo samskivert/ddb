@@ -46,7 +46,10 @@ abstract class DEntitySerializer<T : DEntity> (type :Class<T>) : DSerializer<T>(
 
   override fun get (pcol :DProtocol, buf :ByteBuffer) :T {
     val obj = create(buf.getLong())
-    for (prop in _allProps) prop.read(pcol, buf, obj)
+    for (prop in _allProps) {
+      try { prop.read(pcol, buf, obj) }
+      catch (t :Throwable) { throw RuntimeException("Failed to read entity property $prop", t) }
+    }
     return obj
   }
   override fun put (pcol :DProtocol, buf :ByteBuffer, obj :T) {
@@ -194,7 +197,7 @@ object DSerializers {
       val keys = pcol.get(buf, size, ArrayList<Any>(size))
       val values = pcol.get(buf, size, ArrayList<Any>(size))
       val map = HashMap<Any,Any>(size)
-      var ii = 0 ; while (ii++ < size) map.put(keys[ii], values[ii])
+      var ii = 0 ; while (ii < size) map.put(keys[ii], values[ii++])
       return map
     }
     override fun put (pcol :DProtocol, buf :ByteBuffer, obj :Map<Any,Any>) {

@@ -49,7 +49,7 @@ fun process (sources :List<Path>, out :Writer) {
 
 fun writeSerializer (metas :List<ClassMeta>, dest :Writer) {
   val comp = Mustache.compiler().escapeHTML(false)
-  val tmplIn = ClassMeta::class.javaClass.getClassLoader().getResourceAsStream("serializer.tmpl")
+  val tmplIn = ClassMeta::class.java.getClassLoader().getResourceAsStream("serializer.tmpl")
   val tmpl = comp.compile(BufferedReader(InputStreamReader(tmplIn)))
   tmpl.execute(mapOf("metas" to metas), dest)
 }

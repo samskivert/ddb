@@ -108,7 +108,7 @@ abstract class DEntity (val id :Long) : DReactor() {
 
   /** Registers `fn` to be called when `prop` changes. */
   fun <T> onEmit (prop :Meta.Prop<T>, fn :(T) -> Unit) :Connection {
-    return addCons(object : Cons(this) {
+    return addCons(object : Cons(this@DEntity) {
       override fun notify (key :Any, a1: Any, a2: Any) {
         if (key == prop) fn(uncheckedCast<T>(a1))
       }
@@ -117,7 +117,7 @@ abstract class DEntity (val id :Long) : DReactor() {
 
   /** Registers `fn` to be called when `prop` changes. */
   fun <T> onChange (prop :Meta.Prop<T>, fn :(T, T) -> Unit) :Connection =
-    addCons(object : Cons(this) {
+    addCons(object : Cons(this@DEntity) {
       override fun notify (key :Any, a1 :Any, a2 :Any) {
         if (key == prop) fn(uncheckedCast<T>(a1), uncheckedCast<T>(a2))
       }

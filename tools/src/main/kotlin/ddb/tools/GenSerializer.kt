@@ -227,7 +227,7 @@ data class ClassMeta (val typeName :String, val superName :String, val ifaceName
     get () = kind == Kind.SERVICE
 
   val needsSzer :Boolean
-    get () = ((isData && !isAbstract) || isEntity || isService)
+    get () = ((isData && (!isAbstract || isEnum)) || isEntity || isService)
 
   val entityTypeName :String // needed to disambig in template
     get () = typeName

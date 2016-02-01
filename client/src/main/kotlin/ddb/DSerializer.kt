@@ -3,10 +3,11 @@
 
 package ddb
 
+import ddb.util.*
 import java.nio.ByteBuffer
 import java.util.ArrayList
 import java.util.HashMap
-import ddb.util.*
+import java.util.HashSet
 
 abstract class DSerializer<T> (type :Class<*>) : DProtocol.Component(type) {
 
@@ -191,6 +192,14 @@ object DSerializers {
     override fun put (pcol :DProtocol, buf :ByteBuffer, obj :List<Any>) { pcol.put(buf, obj) }
   }
 
+  val SetS = object : DSerializer<Set<Any>>(Set::class.java) {
+    override fun get (pcol :DProtocol, buf :ByteBuffer) :Set<Any> {
+      val length = buf.getInt()
+      return pcol.get(buf, length, HashSet<Any>(length))
+    }
+    override fun put (pcol :DProtocol, buf :ByteBuffer, obj :Set<Any>) { pcol.put(buf, obj) }
+  }
+
   val MapS = object : DSerializer<Map<Any,Any>>(Map::class.java) {
     override fun get (pcol :DProtocol, buf :ByteBuffer) :Map<Any,Any> {
       val size = buf.getInt()
@@ -215,5 +224,5 @@ object DSerializers {
 
   val Defaults = arrayOf(UnitS, BooleanS, JBooleanS, ByteS, JByteS, CharS, JCharS, ShortS, JShortS,
                          IntS, JIntS, LongS, JLongS, FloatS, JFloatS, DoubleS, JDoubleS,
-                         StringS, ClassS, ListS, MapS)
+                         StringS, ClassS, ListS, SetS, MapS)
 }

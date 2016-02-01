@@ -56,10 +56,12 @@ abstract class DProtocol (compCount :Int) {
     // if we have no serializer, we may need to lazily initialize based on a "parent" type
     if (szer == null) {
       val ptype =
-        // List or Map may be any number of concrete classes, but we use a canonical serializer for
-        // each which turns everything into ArrayList + HashMap; note we use uncheckedCast here
-        // because kotlinc chokes trying to unify all of these Class<T> types; sigh
+        // List, Set and Map may be any number of concrete classes, but we use a canonical
+        // serializer for each which turns everything into ArrayList, HashSet, HashMap;
+        // note we use uncheckedCast here because kotlinc chokes trying to unify all of these
+        // Class<T> types; sigh
         if (List::class.java.isAssignableFrom(type)) uncheckedCast<Class<*>>(List::class.java)
+        else if (Set::class.java.isAssignableFrom(type)) uncheckedCast<Class<*>>(Set::class.java)
         else if (Map::class.java.isAssignableFrom(type)) uncheckedCast<Class<*>>(Map::class.java)
         // enums have have subclasses which specialize particular instances of the enum,
         // we have to catch those here and map them to the base enum type

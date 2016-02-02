@@ -471,7 +471,7 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
   override fun visitField (access :Int, name :String, desc :String, sig :String?,
                            value :Any?) :FieldVisitor? {
     if (ignore) return null
-    if (access and Opcodes.ACC_STATIC == 0) {
+    if (access and Opcodes.ACC_STATIC == 0 && access and Opcodes.ACC_TRANSIENT == 0) {
       val tdesc = if (sig != null) sig else desc
       val type = parseType(CharBuffer.wrap(tdesc))
       // println("$name $sig / $desc -> $type")
@@ -481,7 +481,7 @@ class Visitor (val metas :HashMap<String,ClassMeta>) : ClassVisitor(Opcodes.ASM5
       if (name.endsWith("\$delegate") && type is NamedTypeN) {
         props += PropMeta(stripPost(name, "\$delegate"), type.params[0], true, metas)
       } else {
-        // println("$tdesc -> $typeName -> ${toKotlinType(typeName)}")
+        // println("$name :$tdesc -> $typeName -> ${toKotlinType(typeName)}")
         props += PropMeta(name, type, false, metas)
       }
     } else {
